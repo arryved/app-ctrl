@@ -1,0 +1,6 @@
+#!/bin/bash
+#
+
+if [[ $1 = list && $2 = --installed ]]; then
+  cat apt-installed-staging.txt
+fi

@@ -1,0 +1,59 @@
+---
+readTimeoutS: 30
+writeTimeoutS: 10
+
+aptPath: "apt"
+
+appDefs:
+  app-controld:
+    type: DAEMON
+  arryved-api:
+    type: ONLINE
+    healthz:
+      - check: true
+        port: 10010
+    healthz:
+      - check: true
+        port: 10011
+        tls: true
+  arryved-customer:
+    type: UNKNOWN
+  arryved-insider:
+    type: ONLINE
+    healthz:
+      - check: true
+        port: 10998
+      - check: true
+        port: 10999
+        tls: true
+  arryved-integration:
+    type: ONLINE
+    healthz:
+      - check: true
+        port: 12010
+  arryved-java:
+    type: RUNTIME
+  arryved-merchant:
+    type: ONLINE
+    healthz:
+      - check: true
+        port: 13010
+  arryved-monitor:
+    type: DAEMON
+  arryved-nginx-repo:
+    type: UNKNOWN
+  arryved-onlineordering:
+    type: UNKNOWN
+  arryved-portal:
+    type: ONLINE
+    healthz:
+      - check: true
+        port: 443
+        tls: true
+      - check: true
+        port: 8888
+      - check: true
+        port: 8889
+        tls: true
+  arryved-sshfix:
+    type: DAEMON
