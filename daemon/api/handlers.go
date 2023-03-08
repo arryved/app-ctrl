@@ -3,22 +3,48 @@ package api
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os/exec"
+	"regexp"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/arryved/app-ctrl/daemon/config"
+	"github.com/arryved/app-ctrl/daemon/healthz"
 	"github.com/arryved/app-ctrl/daemon/model"
+	"github.com/arryved/app-ctrl/daemon/varz"
 )
 
+// Handler for /status
 func ConfiguredHandlerStatus(cfg *config.Config) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		statuses, _ := getStatuses(cfg)
-		// TODO ^^ handle error
 		w.Header().Set("content-type", "application/json")
-		responseBody, _ := json.Marshal(statuses)
-		// TODO ^^ handle error
+		httpStatus := http.StatusOK
+
+		statuses, err := getStatuses(cfg)
+
+		if err != nil {
+			httpStatus = http.StatusInternalServerError
+			log.Errorf("error getting statuses: %v", err)
+			errorBody := fmt.Sprintf("{\"error\": \"%s\"}", err.Error())
+			w.WriteHeader(httpStatus)
+			w.Write([]byte(errorBody))
+			return
+		}
+
+		responseBody, err := json.Marshal(statuses)
+		if err != nil {
+			httpStatus = http.StatusInternalServerError
+			log.Errorf("error marshalling statuses: %v", err.Error())
+			errorBody := fmt.Sprintf("{\"error\": \"%s\"}", err.Error())
+			w.WriteHeader(httpStatus)
+			w.Write([]byte(errorBody))
+			return
+		}
+
+		log.Infof("%s %s %s %d", r.RemoteAddr, r.Method, r.URL, httpStatus)
+		w.WriteHeader(httpStatus)
 		w.Write(responseBody)
 	}
 }
@@ -32,18 +58,56 @@ func getStatuses(cfg *config.Config) (map[string]model.Status, error) {
 
 	versionsByApp, err := getInstalledVersions(cfg)
 	if err != nil {
+		log.Errorf("could not get installed versions: %v", err)
 		return statuses, err
 	}
 
+	appCount := len(versionsByApp)
+	log.Infof("found %d installed apps on this host", len(versionsByApp))
+	if appCount == 0 {
+		log.Warn("no installed apps found on this host")
+	}
+
 	for app, version := range versionsByApp {
+		healthResults := runHealthChecks(cfg.AppDefs[app])
+		runningVersion := getRunningVersion(cfg.AppDefs[app])
+
 		status := model.Status{
 			Versions: model.Versions{
-				Installed: &version,
+				Installed: &model.Version{
+					// copy values instead of using &version, otherwise flaky
+					Major: version.Major,
+					Minor: version.Minor,
+					Patch: version.Patch,
+					Build: version.Build,
+				},
+				Running: &model.Version{
+					// copy values instead of using &version, otherwise flaky
+					Major: runningVersion.Major,
+					Minor: runningVersion.Minor,
+					Patch: runningVersion.Patch,
+					Build: runningVersion.Build,
+				},
 			},
+			Health: healthResults,
 		}
 		statuses[app] = status
 	}
 	return statuses, nil
+}
+
+func runHealthChecks(appDef config.AppDef) []model.HealthResult {
+	results := []model.HealthResult{}
+
+	// only run for supported type(s)
+	if appDef.Type != config.Online {
+		return results
+	}
+	for i := range appDef.Healthz {
+		result := healthz.Check(appDef.Healthz[i])
+		results = append(results, result)
+	}
+	return results
 }
 
 func getInstalledVersions(cfg *config.Config) (map[string]model.Version, error) {
@@ -60,7 +124,9 @@ func getInstalledVersions(cfg *config.Config) (map[string]model.Version, error) 
 		line := scanner.Text()
 
 		// ignore non-content lines
-		if !strings.Contains(line, "[installed]") {
+		match, _ := regexp.MatchString(`\[.*installed.*\]`, line)
+		if !match {
+			log.Debugf("skipped line=%s", line)
 			continue
 		}
 
@@ -88,4 +154,26 @@ func getInstalledVersions(cfg *config.Config) (map[string]model.Version, error) 
 
 	cmd.Wait()
 	return statuses, nil
+}
+
+func getRunningVersion(appDef config.AppDef) model.Version {
+	version := model.Version{
+		Major: -1,
+		Minor: -1,
+		Patch: -1,
+		Build: -1,
+	}
+
+	if appDef.Varz == nil {
+		return version
+	}
+	varzResult := varz.Check(*appDef.Varz)
+	parsedVersion, err := model.ParseVersion(varzResult.ServerInfo.Version)
+	if err != nil {
+		log.Warnf("could not parse version string %s", varzResult.ServerInfo.Version)
+	} else {
+		return parsedVersion
+	}
+
+	return version
 }

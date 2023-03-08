@@ -2,42 +2,41 @@
 readTimeoutS: 30
 writeTimeoutS: 10
 
-aptPath: "apt"
+aptPath: "./api/mock_apt"
 
 appDefs:
-  app-controld:
-    type: DAEMON
   arryved-api:
     type: ONLINE
     healthz:
-      - check: true
-        port: 10010
-    healthz:
-      - check: true
-        port: 10011
+      - port: 10010
+      - port: 10011
         tls: true
+    varz:
+      port: 10010
   arryved-customer:
     type: UNKNOWN
   arryved-insider:
     type: ONLINE
     healthz:
-      - check: true
-        port: 10998
-      - check: true
-        port: 10999
+      - port: 10998
+      - port: 10999
         tls: true
+    varz:
+      port: 10998
   arryved-integration:
     type: ONLINE
     healthz:
-      - check: true
-        port: 12010
+      - port: 12010
+    varz:
+      port: 12010
   arryved-java:
     type: RUNTIME
   arryved-merchant:
     type: ONLINE
     healthz:
-      - check: true
-        port: 13010
+      - port: 13010
+    varz:
+      port: 13010
   arryved-monitor:
     type: DAEMON
   arryved-nginx-repo:
@@ -47,13 +46,12 @@ appDefs:
   arryved-portal:
     type: ONLINE
     healthz:
-      - check: true
-        port: 443
+      - port: 443
         tls: true
-      - check: true
-        port: 8888
-      - check: true
-        port: 8889
+      - port: 8888
+      - port: 8889
         tls: true
+    varz:
+      port: 8888
   arryved-sshfix:
     type: DAEMON

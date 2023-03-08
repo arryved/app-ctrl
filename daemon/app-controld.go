@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 
+	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/arryved/app-ctrl/daemon/api"
@@ -19,6 +20,15 @@ func main() {
 
 	log.Infof("using configPath=%s", *configPath)
 	cfg := config.Load(*configPath)
+
+	// set log level
+	level, err := logrus.ParseLevel(cfg.LogLevel)
+	if err != nil {
+		log.Warnf("Could not parse log level %s, %v, defaulting to InfoLevel", cfg.LogLevel, err)
+		log.SetLevel(log.InfoLevel)
+	} else {
+		log.SetLevel(level)
+	}
 
 	api := api.New(cfg)
 	api.Start()

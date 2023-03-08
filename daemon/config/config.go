@@ -25,11 +25,36 @@ type Config struct {
 
 	// Known apps
 	AppDefs map[string]AppDef `yaml:"appDefs"`
+
+	// Min log level
+	LogLevel string `yaml:"logLevel"`
 }
 
 type AppDef struct {
-	// Type
+	// Type of app (see enum below)
 	Type AppType `yaml:"type"`
+
+	// Healthz checks for app
+	Healthz []Healthz `yaml:"healthz"`
+
+	// Varz checks for app; used to get running version
+	Varz *Varz `yaml:"varz"`
+}
+
+type Healthz struct {
+	// Port number to check
+	Port int
+
+	// Whether or not to negotiate SSL/TLS
+	TLS bool
+}
+
+type Varz struct {
+	// Port number to check
+	Port int
+
+	// Whether or not to negotiate SSL/TLS
+	TLS bool
 }
 
 // AppType Enum
@@ -121,6 +146,9 @@ func (c *Config) setDefaults() {
 	if c.AppDefs == nil {
 		c.AppDefs = make(map[string]AppDef)
 	}
+	if c.LogLevel == "" {
+		c.LogLevel = "info"
+	}
 
 	log.Infof("Applied defaults to all unset fields")
 }
@@ -129,13 +157,15 @@ func (c *Config) setDefaults() {
 func (c *Config) loadFile(configPath string) {
 	file, err := ioutil.ReadFile(configPath)
 	if err != nil {
-		log.Warnf("Could not load config file, err=%v", err)
+		log.Warnf("Could not load config file at path='%s', err=%v", configPath, err)
 		return
 	}
 
 	err = yaml.Unmarshal(file, c)
 	if err != nil {
-		log.Warnf("Could not load config file, err=%v", err)
+		log.Warnf("Could not load config file at path='%s', err=%v", configPath, err)
+		return
 	}
-	log.Infof("Loaded config yaml from path=%s", configPath)
+
+	log.Infof("Loaded config yaml from path='%s'", configPath)
 }

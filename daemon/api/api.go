@@ -32,6 +32,11 @@ func (a *Api) Start() error {
 		cfg.CrtPath,
 		cfg.KeyPath,
 	)
+	if err != nil {
+		log.Errorf("Error seen when starting listener: %v", err)
+	}
+
+	log.Info("Finishing up")
 	return err
 }
 

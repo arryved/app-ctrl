@@ -17,17 +17,17 @@ import (
 // check that New returns an API object with the provided config
 func TestNew(t *testing.T) {
 	assert := assert.New(t)
-	config := config.Load("")
+	cfg := config.Load("../config/mock-config.yml")
 
-	api := New(config)
+	api := New(cfg)
 
-	assert.Equal(config, api.cfg)
+	assert.Equal(cfg, api.cfg)
 }
 
 // check that start spins up an HTTPS server
 func TestStart(t *testing.T) {
 	assert := assert.New(t)
-	cfg := config.Load("")
+	cfg := config.Load("../config/mock-config.yml")
 	cwd, _ := os.Getwd()
 	varDir := path.Join(cwd, "../var")
 	cfg.CrtPath = path.Join(varDir, "service.crt")

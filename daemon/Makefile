@@ -1,10 +1,10 @@
 .PHONY: container test coverage clean
 
-app-controld: app-controld.go config/config.go api/handlers.go api/api.go
+app-controld: $(shell find . -type f -name "*.go")
 	go build .
 
 test:
-	go test -coverprofile=coverage.out ./...
+	go test -count=1 -coverprofile=coverage.out ./...
 
 coverage: test
 	go tool cover -html=coverage.out

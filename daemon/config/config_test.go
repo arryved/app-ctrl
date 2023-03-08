@@ -19,6 +19,8 @@ func TestLoadDefaults(t *testing.T) {
 	assert.Equal(10, config.ReadTimeoutS)
 	assert.Equal(10, config.WriteTimeoutS)
 	assert.Equal("/usr/bin/apt", config.AptPath)
+	assert.Equal("info", config.LogLevel)
+	assert.Len(config.AppDefs, 0)
 }
 
 func TestLoadFile(t *testing.T) {
@@ -34,5 +36,16 @@ func TestLoadFile(t *testing.T) {
 	assert.Equal("./var/service.crt", config.CrtPath)
 	assert.Equal(30, config.ReadTimeoutS)
 	assert.Equal(10, config.WriteTimeoutS)
-	assert.Equal("apt", config.AptPath)
+	assert.Equal("./api/mock_apt", config.AptPath)
+
+	// check a deep healthz example
+	assert.Len(config.AppDefs, 11)
+	assert.Contains(config.AppDefs, "arryved-insider")
+	assert.Len(config.AppDefs["arryved-insider"].Healthz, 2)
+	assert.Equal(10999, config.AppDefs["arryved-insider"].Healthz[1].Port)
+	assert.True(config.AppDefs["arryved-insider"].Healthz[1].TLS)
+
+	// check a varz example
+	assert.Equal(10998, config.AppDefs["arryved-insider"].Varz.Port)
+	assert.False(config.AppDefs["arryved-insider"].Varz.TLS)
 }

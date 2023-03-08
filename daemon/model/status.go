@@ -7,13 +7,24 @@ import (
 )
 
 type Status struct {
-	Versions Versions `json:"versions"`
-	Healthy  *bool    `json:"healthy"`
+	Versions Versions       `json:"versions"`
+	Health   []HealthResult `json:"health"`
 }
+
 type Versions struct {
 	Config    int      `json:"config"`
 	Installed *Version `json:"installed"`
 	Running   *Version `json:"running"`
+}
+
+type HealthResult struct {
+	Port    int  `json:"port"`
+	Healthy bool `json:"healthy"`
+
+	// service status is not known in this case;
+	// the value of Healthy doesn't mean anything
+	// when this is true
+	Unknown bool `json:"unknown"`
 }
 
 type Version struct {
@@ -23,13 +34,17 @@ type Version struct {
 	Build int `json:"build"`
 }
 
-func ParseVersion(version string) (Version, error) {
-	result := Version{
+func NewVersion() Version {
+	return Version{
 		Major: -1,
 		Minor: -1,
 		Patch: -1,
 		Build: -1,
 	}
+}
+
+func ParseVersion(version string) (Version, error) {
+	result := NewVersion()
 
 	// first, split by '-' to look for a build suffix
 	fields := strings.Split(version, "-")

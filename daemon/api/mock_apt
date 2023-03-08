@@ -1,6 +1,7 @@
 #!/bin/bash
 #
+THIS_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 if [[ $1 = list && $2 = --installed ]]; then
-  cat apt-installed-staging.txt
+  cat $THIS_DIR/apt-installed-staging.txt
 fi

@@ -27,7 +27,7 @@ func TestSerialize(t *testing.T) {
 	assert.Equal(
 		"{\"versions\":{\"config\":-1,\"installed\":{\"major\":1,\"minor\":2,"+
 			"\"patch\":3,\"build\":0},\"running\":{\"major\":4,\"minor\":5,\"patch\":6,\"build\":0}},"+
-			"\"healthy\":null}",
+			"\"health\":null}",
 		string(actual))
 }
 
