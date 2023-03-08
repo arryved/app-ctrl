@@ -1,3 +1,4 @@
+# This config is used for testing; keep real config in ansible
 ---
 readTimeoutS: 30
 writeTimeoutS: 10
