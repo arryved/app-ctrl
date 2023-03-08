@@ -39,8 +39,8 @@ func TestStatusHandler(t *testing.T) {
 
 	// mock config, change varz port to match mock listener
 	cfg := config.Load("../config/mock-config.yml")
-	cfg.AptPath = "./test_objects/mock_apt"
 	varzPort := mockVarzListener()
+	cfg.AptPath = "./test_objects/mock_apt"
 	cfg.AppDefs["arryved-api"].Varz.Port = varzPort
 
 	// stub channel and cache to configure the handler with
@@ -84,7 +84,14 @@ func TestStatusHandler(t *testing.T) {
 	assert.False(result.Health[0].Unknown)
 	assert.Equal(10010, result.Health[0].Port)
 
-	// deeply check the same result's running version
+	// check the same result's health check result(s)
+	assert.NotNil(result.Health)
+	assert.Greater(len(result.Health), 0)
+	assert.False(result.Health[0].Healthy)
+	assert.False(result.Health[0].Unknown)
+	assert.Equal(10010, result.Health[0].Port)
+
+	// check the same result's running version
 	assert.Equal(1, result.Versions.Running.Major)
 	assert.Equal(13, result.Versions.Running.Minor)
 	assert.Equal(0, result.Versions.Running.Patch)

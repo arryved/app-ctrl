@@ -1,12 +1,14 @@
 package api
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 
+	common "github.com/arryved/app-ctrl/api/api"
 	"github.com/arryved/app-ctrl/daemon/config"
 	"github.com/arryved/app-ctrl/daemon/model"
 )
@@ -26,10 +28,17 @@ func (a *Api) Start() error {
 
 	mux.HandleFunc("/status", ConfiguredHandlerStatus(cfg, a.StatusChannel, cache))
 
+	tlsConfig := &tls.Config{
+		CipherSuites:             common.CipherSuitesFromConfig(cfg.TLS.Ciphers),
+		MinVersion:               common.TLSVersionFromConfig(cfg.TLS.MinVersion),
+		PreferServerCipherSuites: true,
+	}
+
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.Port),
 		Handler:      mux,
 		ReadTimeout:  time.Duration(cfg.ReadTimeoutS) * time.Second,
+		TLSConfig:    tlsConfig,
 		WriteTimeout: time.Duration(cfg.WriteTimeoutS) * time.Second,
 	}
 

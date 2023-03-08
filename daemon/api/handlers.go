@@ -59,6 +59,8 @@ func StatusRunner(cfg *config.Config, ch chan map[string]model.Status) {
 		statuses, err := getStatuses(cfg)
 		if err != nil {
 			log.Errorf("error getting statuses: %v", err)
+			log.Debug("status runner sleeping")
+			time.Sleep(time.Duration(cfg.PollIntervalSec) * time.Second)
 			continue
 		}
 
@@ -73,7 +75,7 @@ func StatusRunner(cfg *config.Config, ch chan map[string]model.Status) {
 
 		// insert pause to prevent hard busy-wait
 		log.Debug("status runner sleeping")
-		time.Sleep(5 * time.Second)
+		time.Sleep(time.Duration(cfg.PollIntervalSec) * time.Second)
 	}
 }
 
