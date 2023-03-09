@@ -1,0 +1,60 @@
+# This config is used for testing; keep real config in ansible
+---
+logLevel: info
+pollIntervalSec: 5
+readTimeoutS: 30
+writeTimeoutS: 10
+
+aptPath: "./api/mock_apt"
+
+appDefs:
+  arryved-api:
+    type: ONLINE
+    healthz:
+      - port: 10010
+      - port: 10011
+        tls: true
+    varz:
+      port: 10010
+  arryved-customer:
+    type: UNKNOWN
+  arryved-insider:
+    type: ONLINE
+    healthz:
+      - port: 10998
+      - port: 10999
+        tls: true
+    varz:
+      port: 10998
+  arryved-integration:
+    type: ONLINE
+    healthz:
+      - port: 12010
+    varz:
+      port: 12010
+  arryved-java:
+    type: RUNTIME
+  arryved-merchant:
+    type: ONLINE
+    healthz:
+      - port: 13010
+    varz:
+      port: 13010
+  arryved-monitor:
+    type: DAEMON
+  arryved-nginx-repo:
+    type: UNKNOWN
+  arryved-onlineordering:
+    type: UNKNOWN
+  arryved-portal:
+    type: ONLINE
+    healthz:
+      - port: 443
+        tls: true
+      - port: 8888
+      - port: 8889
+        tls: true
+    varz:
+      port: 8888
+  arryved-sshfix:
+    type: DAEMON

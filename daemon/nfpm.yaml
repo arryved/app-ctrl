@@ -1,0 +1,47 @@
+# nfpm configuration file for building package
+#
+# check https://nfpm.goreleaser.com/configuration for detailed usage
+#
+#  nfpm needed in build env: `brew install nfpm` for local dev
+#
+name: "app-controld"
+arch: "amd64"
+platform: "linux"
+
+# TODO - source version from env and/or generate programmatically
+version: "0.1.3"
+section: "default"
+priority: "extra"
+replaces: []
+
+provides:
+- app-controld
+depends:
+- apt
+recommends: []
+suggests: []
+conflicts: []
+
+maintainer: "TODO(name) <todo@example.com>"
+description: |
+  This is an agent daemon for app-control, to provide
+  status for apps that are deployed directly on VMs as
+  opposed to containers.
+vendor: "Arryved"
+homepage: "https://arryved.pages.arryved.io/internal-documentation/groups/SRE/"
+license: "none/proprietary"
+
+contents:
+- src: ./app-controld
+  dst: /usr/local/bin/app-controld
+  file_info:
+    mode: 0755
+    owner: root
+    group: root
+
+- src: ./systemd/app-controld.service
+  dst: /lib/systemd/system/app-controld.service
+  file_info:
+    mode: 0644
+    owner: root
+    group: root
