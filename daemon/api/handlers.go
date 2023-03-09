@@ -87,7 +87,7 @@ func getStatuses(cfg *config.Config) (map[string]model.Status, error) {
 	}
 
 	appCount := len(versionsByApp)
-	log.Infof("found %d installed apps on this host", len(versionsByApp))
+	log.Debugf("found %d installed apps on this host", len(versionsByApp))
 	if appCount == 0 {
 		log.Warn("no installed apps found on this host")
 	}

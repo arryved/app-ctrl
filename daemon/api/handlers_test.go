@@ -39,7 +39,7 @@ func TestStatusHandler(t *testing.T) {
 
 	// mock config, change varz port to match mock listener
 	cfg := config.Load("../config/mock-config.yml")
-	cfg.AptPath = "./mock_apt"
+	cfg.AptPath = "./test_objects/mock_apt"
 	varzPort := mockVarzListener()
 	cfg.AppDefs["arryved-api"].Varz.Port = varzPort
 
