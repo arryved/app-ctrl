@@ -8,17 +8,23 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/arryved/app-ctrl/daemon/config"
+	"github.com/arryved/app-ctrl/daemon/model"
 )
 
 type Api struct {
-	cfg *config.Config
+	cfg           *config.Config
+	StatusChannel chan map[string]model.Status
 }
 
 func (a *Api) Start() error {
 	cfg := a.cfg
 
 	mux := http.NewServeMux()
-	registerHandlers(mux, cfg)
+
+	log.Info("making status cache")
+	cache := make(map[string]model.Status)
+
+	mux.HandleFunc("/status", ConfiguredHandlerStatus(cfg, a.StatusChannel, cache))
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.Port),
@@ -40,9 +46,10 @@ func (a *Api) Start() error {
 	return err
 }
 
-func New(cfg *config.Config) *Api {
+func New(cfg *config.Config, ch chan map[string]model.Status) *Api {
 	api := &Api{
-		cfg: cfg,
+		cfg:           cfg,
+		StatusChannel: ch,
 	}
 	return api
 }

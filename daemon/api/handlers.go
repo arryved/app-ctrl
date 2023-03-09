@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/arryved/app-ctrl/daemon/config"
@@ -17,23 +18,25 @@ import (
 )
 
 // Handler for /status
-func ConfiguredHandlerStatus(cfg *config.Config) func(w http.ResponseWriter, r *http.Request) {
+func ConfiguredHandlerStatus(
+	cfg *config.Config,
+	ch chan map[string]model.Status,
+	cache map[string]model.Status) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("content-type", "application/json")
 		httpStatus := http.StatusOK
 
-		statuses, err := getStatuses(cfg)
-
-		if err != nil {
-			httpStatus = http.StatusInternalServerError
-			log.Errorf("error getting statuses: %v", err)
-			errorBody := fmt.Sprintf("{\"error\": \"%s\"}", err.Error())
-			w.WriteHeader(httpStatus)
-			w.Write([]byte(errorBody))
-			return
+		log.Debugf("Handler channel=%v", ch)
+		if len(ch) == 0 {
+			// no result yet; use cache
+			log.Debug("no result yet, rely on cache")
+		} else {
+			// pull latest result and cache it
+			log.Debug("pull latest result and cache it")
+			cache = <-ch
 		}
 
-		responseBody, err := json.Marshal(statuses)
+		responseBody, err := json.Marshal(cache)
 		if err != nil {
 			httpStatus = http.StatusInternalServerError
 			log.Errorf("error marshalling statuses: %v", err.Error())
@@ -44,13 +47,34 @@ func ConfiguredHandlerStatus(cfg *config.Config) func(w http.ResponseWriter, r *
 		}
 
 		log.Infof("%s %s %s %d", r.RemoteAddr, r.Method, r.URL, httpStatus)
+		log.Debugf("response body=%s", string(responseBody))
 		w.WriteHeader(httpStatus)
 		w.Write(responseBody)
 	}
 }
 
-func registerHandlers(mux *http.ServeMux, cfg *config.Config) {
-	mux.HandleFunc("/status", ConfiguredHandlerStatus(cfg))
+func StatusRunner(cfg *config.Config, ch chan map[string]model.Status) {
+	for {
+		// get the latest values
+		statuses, err := getStatuses(cfg)
+		if err != nil {
+			log.Errorf("error getting statuses: %v", err)
+			continue
+		}
+
+		// if there's a value on the channel already, get rid of it in favor of the new one
+		log.Debugf("Runner channel=%v", ch)
+		if len(ch) > 0 {
+			log.Debug("discarding stale value on channel")
+			<-ch
+		}
+		log.Debugf("sending statuses = %v", statuses)
+		ch <- statuses
+
+		// insert pause to prevent hard busy-wait
+		log.Debug("status runner sleeping")
+		time.Sleep(5 * time.Second)
+	}
 }
 
 func getStatuses(cfg *config.Config) (map[string]model.Status, error) {

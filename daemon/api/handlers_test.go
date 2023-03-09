@@ -36,43 +36,55 @@ func mockVarzListener() int {
 
 func TestStatusHandler(t *testing.T) {
 	assert := assert.New(t)
-	varzPort := mockVarzListener()
 
+	// mock config, change varz port to match mock listener
 	cfg := config.Load("../config/mock-config.yml")
 	cfg.AptPath = "./mock_apt"
+	varzPort := mockVarzListener()
 	cfg.AppDefs["arryved-api"].Varz.Port = varzPort
 
-	responder := httptest.NewRecorder()
-	handler := http.HandlerFunc(ConfiguredHandlerStatus(cfg))
-	req, err := http.NewRequest("GET", "/status", nil)
+	// stub channel and cache to configure the handler with
+	// handler will be the object under test
+	ch := make(chan map[string]model.Status, 1)
+	cache := make(map[string]model.Status)
+	handler := http.HandlerFunc(ConfiguredHandlerStatus(cfg, ch, cache))
 
+	// get one status and queue up for the handler via the channel
+	statuses, _ := getStatuses(cfg)
+	ch <- statuses
+
+	// make the request using a test handler + responser pair
+	responder := httptest.NewRecorder()
+	req, err := http.NewRequest("GET", "/status", nil)
 	handler.ServeHTTP(responder, req)
 
+	// expect no err and an OK status
 	assert.Nil(err)
 	assert.Equal(200, responder.Code)
 
-	// unmarshal and confirm results
+	// unmarshal to confirm confirm results
 	results := map[string]model.Status{}
 	err = json.Unmarshal(responder.Body.Bytes(), &results)
 
+	// should have 11 results (from the mock config)
 	assert.Nil(err)
 	assert.Len(results, 11)
 
-	// check a specific result
+	// deeply check a specific result
 	result := results["arryved-api"]
 	assert.Equal(2, result.Versions.Installed.Major)
 	assert.Equal(14, result.Versions.Installed.Minor)
 	assert.Equal(2, result.Versions.Installed.Patch)
 	assert.Equal(-1, result.Versions.Installed.Build)
 
-	// check the same result's health check result(s)
+	// deeply check the same result's health check result(s)
 	assert.NotNil(result.Health)
 	assert.Greater(len(result.Health), 0)
 	assert.False(result.Health[0].Healthy)
 	assert.False(result.Health[0].Unknown)
 	assert.Equal(10010, result.Health[0].Port)
 
-	// check the same result's running version
+	// deeply check the same result's running version
 	assert.Equal(1, result.Versions.Running.Major)
 	assert.Equal(13, result.Versions.Running.Minor)
 	assert.Equal(0, result.Versions.Running.Patch)

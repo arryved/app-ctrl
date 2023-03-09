@@ -1,5 +1,7 @@
 # This config is used for testing; keep real config in ansible
 ---
+logLevel: info
+pollIntervalSec: 5
 readTimeoutS: 30
 writeTimeoutS: 10
 

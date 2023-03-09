@@ -28,6 +28,9 @@ type Config struct {
 
 	// Min log level
 	LogLevel string `yaml:"logLevel"`
+
+	// Status polling pause interval
+	PollIntervalSec int `yaml:"pollIntervalSec"`
 }
 
 type AppDef struct {
@@ -148,6 +151,9 @@ func (c *Config) setDefaults() {
 	}
 	if c.LogLevel == "" {
 		c.LogLevel = "info"
+	}
+	if c.PollIntervalSec == 0 {
+		c.PollIntervalSec = 5
 	}
 
 	log.Infof("Applied defaults to all unset fields")

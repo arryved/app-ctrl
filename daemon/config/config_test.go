@@ -20,6 +20,7 @@ func TestLoadDefaults(t *testing.T) {
 	assert.Equal(10, config.WriteTimeoutS)
 	assert.Equal("/usr/bin/apt", config.AptPath)
 	assert.Equal("info", config.LogLevel)
+	assert.Equal(5, config.PollIntervalSec)
 	assert.Len(config.AppDefs, 0)
 }
 

@@ -8,6 +8,7 @@ import (
 
 	"github.com/arryved/app-ctrl/daemon/api"
 	"github.com/arryved/app-ctrl/daemon/config"
+	"github.com/arryved/app-ctrl/daemon/model"
 )
 
 const (
@@ -30,6 +31,14 @@ func main() {
 		log.SetLevel(level)
 	}
 
-	api := api.New(cfg)
+	// TODO - ship logs to fluentd/log aggregation
+	// TODO - collect and expose metrics
+
+	// start background status runner
+	statusCh := make(chan map[string]model.Status, 1)
+	go api.StatusRunner(cfg, statusCh)
+
+	// start app-controld API
+	api := api.New(cfg, statusCh)
 	api.Start()
 }
