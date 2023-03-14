@@ -1,0 +1,23 @@
+# This config is used for testing; keep real config in ansible
+---
+logLevel: info
+readTimeoutS: 5
+writeTimeoutS: 10
+
+topology:
+  dev:
+  prod:
+    clusters:
+      arryved-api:
+        hosts:
+          arryved-api0.prod.arryved.com:
+          arryved-api1.prod.arryved.com:
+          arryved-api2.prod.arryved.com:
+          arryved-api3.prod.arryved.com:
+          arryved-api4.prod.arryved.com:
+          canary-api.prod.arryved.com:
+            canary: true
+          canary-api1.prod.arryved.com:
+            canary: true
+  sandbox:
+  staging:
