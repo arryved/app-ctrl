@@ -58,7 +58,8 @@ func ParseVersion(version string) (Version, error) {
 	if len(fields) == 2 {
 		value, err := strconv.Atoi(fields[1])
 		if err != nil {
-			return result, fmt.Errorf("version build suffix %s is not a number", fields[1])
+			// if this is not a number, just set to default -1; we only accept numbers for now
+			result.Build = -1
 		} else {
 			result.Build = value
 		}
