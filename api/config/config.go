@@ -26,6 +26,9 @@ type Config struct {
 	// Min log level
 	LogLevel string `yaml:"logLevel"`
 
+	// TLS Settings
+	TLS *TLSConfig `yaml:"tls"`
+
 	// Layout of the app clusters TODO - (statically configured for now, add discovery later)
 	Topology Topology `yaml:"topology"`
 }
@@ -43,6 +46,14 @@ type Cluster struct {
 
 type Host struct {
 	Canary bool `yaml:"canary"`
+}
+
+type TLSConfig struct {
+	// list of allowed ciphers
+	Ciphers []string
+
+	// minimum TLS version to use
+	MinVersion string
 }
 
 // Load the config from provided path
@@ -79,6 +90,15 @@ func (c *Config) setDefaults() {
 	}
 	if c.LogLevel == "" {
 		c.LogLevel = "info"
+	}
+	if c.TLS == nil {
+		c.TLS = &TLSConfig{
+			Ciphers: []string{
+				"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+				"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
+			},
+			MinVersion: "1.2",
+		}
 	}
 
 	log.Infof("Applied defaults to all unset fields")
