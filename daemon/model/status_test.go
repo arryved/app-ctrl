@@ -41,6 +41,7 @@ func TestParseVersion(t *testing.T) {
 		"0.7-0",
 		"1.0.0-20220123",
 		"1.0",
+		"1.0-test",
 	}
 
 	expected := []Version{
@@ -48,6 +49,7 @@ func TestParseVersion(t *testing.T) {
 		Version{Major: 1, Minor: 8, Patch: -1, Build: 345},
 		Version{Major: 0, Minor: 7, Patch: -1, Build: 0},
 		Version{Major: 1, Minor: 0, Patch: 0, Build: 20220123},
+		Version{Major: 1, Minor: 0, Patch: -1, Build: -1},
 		Version{Major: 1, Minor: 0, Patch: -1, Build: -1},
 	}
 

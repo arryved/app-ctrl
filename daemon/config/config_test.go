@@ -37,7 +37,6 @@ func TestLoadFile(t *testing.T) {
 	assert.Equal("./var/service.crt", config.CrtPath)
 	assert.Equal(30, config.ReadTimeoutS)
 	assert.Equal(10, config.WriteTimeoutS)
-	assert.Equal("./api/mock_apt", config.AptPath)
 
 	// check a deep healthz example
 	assert.Len(config.AppDefs, 11)
@@ -49,4 +48,5 @@ func TestLoadFile(t *testing.T) {
 	// check a varz example
 	assert.Equal(10998, config.AppDefs["arryved-insider"].Varz.Port)
 	assert.False(config.AppDefs["arryved-insider"].Varz.TLS)
+	assert.Equal("./api/mock_apt", config.AptPath)
 }

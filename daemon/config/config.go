@@ -6,6 +6,8 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
+
+	common "github.com/arryved/app-ctrl/api/config"
 )
 
 type Config struct {
@@ -31,6 +33,9 @@ type Config struct {
 
 	// Status polling pause interval
 	PollIntervalSec int `yaml:"pollIntervalSec"`
+
+	// TLS Settings
+	TLS *common.TLSConfig `yaml:"tls"`
 }
 
 type AppDef struct {
@@ -154,6 +159,15 @@ func (c *Config) setDefaults() {
 	}
 	if c.PollIntervalSec == 0 {
 		c.PollIntervalSec = 5
+	}
+	if c.TLS == nil {
+		c.TLS = &common.TLSConfig{
+			Ciphers: []string{
+				"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+				"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
+			},
+			MinVersion: "1.2",
+		}
 	}
 
 	log.Infof("Applied defaults to all unset fields")
