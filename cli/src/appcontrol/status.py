@@ -10,20 +10,20 @@ from sys import stderr
 warnings.filterwarnings("ignore")
 
 api_hosts_by_env = {
-    "dev": "app-control.dev.arryved.com",
-    "prod": "app-control.prod.arryved.com",
-    "sandbox": "app-control.dev.arryved.com",
-    "staging": "app-control.prod.arryved.com",
+    "cde": "https://app-control.cde.arryved.com",
+    "dev": "https://app-control.dev.arryved.com:1026",
+    "prod": "https://app-control.prod.arryved.com:1026",
+    "sandbox": "https://app-control.dev.arryved.com:1026",
+    "staging": "https://app-control.prod.arryved.com:1026",
 }
 
 @click.command()
 @click.option('-e', '--environment', required=True)
 @click.option('-a', '--application', required=True)
 def status(environment, application):
-    port = 1026
     action = "status"
     api_host = api_hosts_by_env[environment]
-    url = (f"https://{api_host}:{port}/{action}/{environment}/{application}")
+    url = (f"{api_host}/{action}/{environment}/{application}")
     click.echo(click.style(f"Connecting to {url}...", fg="green"))
 
     with click_spinner.spinner():
@@ -38,15 +38,18 @@ def status(environment, application):
 
     table = ANSITable(
         Column("Host", headstyle="bold"),
+        Column("Meta", headstyle="bold"),
         Column("Installed", headstyle="bold"),
         Column("Running", headstyle="bold"),
         Column("Config", headstyle="bold"), 
         Column("Health|Port", headstyle="bold"),
-         border="thin"
+        border="thin"
     )
 
     result = json.loads(response.text)
-    for host, status in result.items():
+    for host, status in result["hostStatuses"].items():
+        canary = "canary" if host in result["attributes"]["canaries"] else ""
+        meta = ','.join([canary])
         installed = "<<red>>?"
         running = "<<red>>?"
         config = "<<red>>?"
@@ -65,7 +68,7 @@ def status(environment, application):
         healths = " ".join(healths)
         color = "red" if "?" in healths or "DOWN" in healths else "green"
         healths = f"<<{color}>>{healths}" if healths else "n/a"
-        table.row(host, installed, running, config, healths)
+        table.row(host, meta, installed, running, config, healths)
     table.print()
 
 def render_version(version):
