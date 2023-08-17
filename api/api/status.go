@@ -20,6 +20,14 @@ type HttpClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
+func handleInternalServerError(w http.ResponseWriter, err error) {
+	httpStatus := http.StatusInternalServerError
+	errorBody := fmt.Sprintf("{\"error\": \"%s\"}", err.Error())
+	w.WriteHeader(httpStatus)
+	w.Write([]byte(errorBody))
+	return
+}
+
 func ConfiguredHandlerStatus(cfg *config.Config) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("content-type", "application/json")
@@ -40,22 +48,41 @@ func ConfiguredHandlerStatus(cfg *config.Config) func(http.ResponseWriter, *http
 		env := urlElements[2]
 		app := urlElements[3]
 
+		if app == "" {
+			clusterStatuses := make(map[string]*ClusterStatus)
+			for app := range cfg.Topology[env].Clusters {
+				clusterStatus, err := GetClusterStatus(cfg, env, app)
+				if err != nil {
+					log.Errorf("error fetching statuses: %v", err.Error())
+					handleInternalServerError(w, err)
+					return
+				}
+				clusterStatuses[app] = clusterStatus
+			}
+			responseBody, err := json.Marshal(clusterStatuses)
+			if err != nil {
+				log.Errorf("error marshalling statuses: %v", err.Error())
+				handleInternalServerError(w, err)
+				return
+			}
+
+			log.Debugf("response body=%s", string(responseBody))
+			w.WriteHeader(httpStatus)
+			w.Write(responseBody)
+			return
+		}
+
 		clusterStatus, err := GetClusterStatus(cfg, env, app)
 		if err != nil {
-			httpStatus = http.StatusInternalServerError
-			errorBody := fmt.Sprintf("{\"error\": \"%s\"}", err.Error())
-			w.WriteHeader(httpStatus)
-			w.Write([]byte(errorBody))
+			log.Errorf("error fetching statuses: %v", err.Error())
+			handleInternalServerError(w, err)
 			return
 		}
 
 		responseBody, err := json.Marshal(clusterStatus)
 		if err != nil {
-			httpStatus = http.StatusInternalServerError
 			log.Errorf("error marshalling statuses: %v", err.Error())
-			errorBody := fmt.Sprintf("{\"error\": \"%s\"}", err.Error())
-			w.WriteHeader(httpStatus)
-			w.Write([]byte(errorBody))
+			handleInternalServerError(w, err)
 			return
 		}
 
