@@ -65,7 +65,15 @@ func ConfiguredHandlerStatus(cfg *config.Config) func(http.ResponseWriter, *http
 	}
 }
 
-type ClusterStatus map[string]*model.Status
+type ClusterAttributes struct {
+	Canaries []string `json:"canaries"`
+}
+
+type ClusterStatus struct {
+	HostStatuses map[string]*model.Status `json:"hostStatuses"`
+	Attributes   *ClusterAttributes       `json:"attributes"`
+}
+
 type HostStatus map[string]*model.Status
 
 func GetClusterStatus(cfg *config.Config, env string, app string) (*ClusterStatus, error) {
@@ -88,7 +96,13 @@ func GetClusterStatus(cfg *config.Config, env string, app string) (*ClusterStatu
 	hosts := cfg.Topology[env].Clusters[app].Hosts
 	log.Infof("%d hosts found for env=%s, app=%s", len(hosts), env, app)
 
-	clusterStatus := make(ClusterStatus)
+	clusterStatus := ClusterStatus{
+		HostStatuses: make(map[string]*model.Status),
+		Attributes: &ClusterAttributes{
+			Canaries: []string{},
+		},
+	}
+
 	ch := make(chan map[string]*model.Status)
 	for name, _ := range hosts {
 		go func(ch chan map[string]*model.Status, name string) {
@@ -109,7 +123,10 @@ func GetClusterStatus(cfg *config.Config, env string, app string) (*ClusterStatu
 	for _, _ = range hosts {
 		result := <-ch
 		for name, status := range result {
-			clusterStatus[name] = status
+			clusterStatus.HostStatuses[name] = status
+			if hosts[name].Canary {
+				clusterStatus.Attributes.Canaries = append(clusterStatus.Attributes.Canaries, name)
+			}
 		}
 	}
 

@@ -59,7 +59,9 @@ func TestGetClusterStatuses(t *testing.T) {
 				"arryved-api": config.Cluster{
 					Hosts: map[string]config.Host{
 						"localhost": config.Host{},
-						"127.0.0.1": config.Host{},
+						"127.0.0.1": config.Host{
+							Canary: true,
+						},
 					},
 				},
 			},
@@ -70,10 +72,11 @@ func TestGetClusterStatuses(t *testing.T) {
 
 	assert.Nil(err)
 	assert.NotNil(status)
-	assert.Len(*status, 2)
-	assert.Contains(*status, "localhost")
-	assert.Contains(*status, "127.0.0.1")
-
-	assert.Equal(2, (*((*status)["localhost"])).Versions.Installed.Major)
-	assert.Equal(2, (*((*status)["127.0.0.1"])).Versions.Installed.Major)
+	assert.Len(status.HostStatuses, 2)
+	assert.Contains(status.HostStatuses, "localhost")
+	assert.Contains(status.HostStatuses, "127.0.0.1")
+	assert.Equal(2, status.HostStatuses["localhost"].Versions.Installed.Major)
+	assert.Equal(2, status.HostStatuses["127.0.0.1"].Versions.Installed.Major)
+	assert.NotNil(status.Attributes)
+	assert.Contains(status.Attributes.Canaries, "127.0.0.1")
 }
