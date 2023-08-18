@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='app-control',
-    version='1.0.0',
+    version='2.0.0',
 
 	description='app-control CLI',
     long_description_content_type='text/markdown',
