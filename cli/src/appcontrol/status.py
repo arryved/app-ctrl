@@ -1,21 +1,17 @@
-import click, click_spinner
+import click
+import click_spinner
 import json
 import math
 import requests
 import warnings
 
 from ansitable import ANSITable, Column
-from sys import stderr
+
+from appcontrol.common import constants
+
 
 warnings.filterwarnings("ignore")
 
-api_hosts_by_env = {
-    "cde": "https://app-control.cde.arryved.com",
-    "dev": "https://app-control.dev.arryved.com:1026",
-    "prod": "https://app-control.prod.arryved.com:1026",
-    "sandbox": "https://app-control.dev.arryved.com:1026",
-    "staging": "https://app-control.prod.arryved.com:1026",
-}
 
 @click.command()
 @click.option('-e', '--environment', required=True)
@@ -23,7 +19,7 @@ api_hosts_by_env = {
 @click.option('--canary-only', required=False, default=False, is_flag=True)
 def status(environment, application, canary_only):
     action = "status"
-    api_host = api_hosts_by_env[environment]
+    api_host = constants["api_hosts_by_env"][environment]
     url = (f"{api_host}/{action}/{environment}/{application}")
     click.echo(click.style(f"Connecting to {url} ...", fg="green"))
 
@@ -48,15 +44,15 @@ def print_status_table(application, result, canary_only):
         Column("Meta", headstyle="bold"),
         Column("Installed", headstyle="bold"),
         Column("Running", headstyle="bold"),
-        Column("Config", headstyle="bold"), 
+        Column("Config", headstyle="bold"),
         Column("Health|Port", headstyle="bold"),
         border="thin"
     )
 
     if application == "":
-      results = result
+        results = result
     else:
-      results = {application: result}
+        results = {application: result}
 
     for application, result in results.items():
         for host, status in result["hostStatuses"].items():
@@ -76,14 +72,14 @@ def print_status_table(application, result, canary_only):
                     port = h["port"]
                     health = "OK" if h["healthy"] else "DOWN"
                     health = "?" if h["unknown"] else health
-                    healths.append(f"{health}|{port}")    
+                    healths.append(f"{health}|{port}")
             healths = " ".join(healths)
             color = "red" if "?" in healths or "DOWN" in healths else "green"
             healths = f"<<{color}>>{healths}" if healths else "n/a"
             if canary_only and not canary:
-              pass
+                pass
             else:
-              table.row(application, host, meta, installed, running, config, healths)
+                table.row(application, host, meta, installed, running, config, healths)
 
     table.print()
 
@@ -104,4 +100,3 @@ def render_version(version):
         full = "n/a"
 
     return full
-

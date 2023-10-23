@@ -4,7 +4,7 @@ setup(
     name='app-control',
     version='2.0.0',
 
-	description='app-control CLI',
+    description='app-control CLI',
     long_description_content_type='text/markdown',
     long_description='''app-control''',
 
