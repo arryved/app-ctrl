@@ -134,7 +134,7 @@ func GetClusterStatus(cfg *config.Config, env string, app string) (*ClusterStatu
 	for name, _ := range hosts {
 		go func(ch chan map[string]*model.Status, name string) {
 			hostStatus, err := GetHostStatus(
-				cfg.AppControlDScheme, name, cfg.AppControlDPort, cfg.ReadTimeoutS)
+				cfg.AppControlDScheme, name, cfg.AppControlDPort, cfg.AppControlDPSKPath, cfg.ReadTimeoutS)
 			result := make(map[string]*model.Status)
 			if err != nil {
 				log.Warnf("no status retrieved for host=%s", name)
@@ -160,7 +160,7 @@ func GetClusterStatus(cfg *config.Config, env string, app string) (*ClusterStatu
 	return &clusterStatus, nil
 }
 
-func GetHostStatus(scheme string, host string, port int, timeoutS int) (*HostStatus, error) {
+func GetHostStatus(scheme string, host string, port int, pskPath string, timeoutS int) (*HostStatus, error) {
 	url := fmt.Sprintf("%s://%s:%d/status", scheme, host, port)
 	tr := http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -171,6 +171,8 @@ func GetHostStatus(scheme string, host string, port int, timeoutS int) (*HostSta
 	}
 
 	req, err := http.NewRequest("GET", url, nil)
+	psk := fmt.Sprintf("Bearer %s", readPSKFromPath(pskPath))
+	req.Header.Set("Authorization", psk)
 	if err != nil {
 		log.Warnf("Failed to create /status request to app-controld on host=%s, err=%v", host, err)
 		return nil, err
@@ -196,4 +198,13 @@ func GetHostStatus(scheme string, host string, port int, timeoutS int) (*HostSta
 	}
 
 	return &status, err
+}
+
+func readPSKFromPath(pskPath string) string {
+	pskFromFile, err := ioutil.ReadFile(pskPath)
+	if err != nil {
+		log.Warnf("couldn't read PSK from path=%s", pskPath)
+		return ""
+	}
+	return strings.TrimSpace(string(pskFromFile))
 }

@@ -9,8 +9,9 @@ import (
 
 type Config struct {
 	// Port, Scheme for app-controld API
-	AppControlDPort   int    `yaml:"appControlDPort"`
-	AppControlDScheme string `yaml:"appControlDScheme"`
+	AppControlDPort    int    `yaml:"appControlDPort"`
+	AppControlDScheme  string `yaml:"appControlDScheme"`
+	AppControlDPSKPath string `yaml:"appControlDPSKPath"`
 
 	// Port for HTTPS API listener
 	Port int `yaml:"port"`
@@ -72,6 +73,9 @@ func (c *Config) setDefaults() {
 	}
 	if c.AppControlDScheme == "" {
 		c.AppControlDScheme = "https"
+	}
+	if c.AppControlDPSKPath == "" {
+		c.AppControlDPSKPath = "./var/app-controld-psk"
 	}
 	if c.Port == 0 {
 		c.Port = 1026

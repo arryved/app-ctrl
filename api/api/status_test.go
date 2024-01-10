@@ -32,8 +32,9 @@ func TestGetHostStatus(t *testing.T) {
 	assert := assert.New(t)
 	host := "localhost"
 	port := mockAppControlD()
+	pskPath := "../var/app-controld-psk"
 
-	status, err := GetHostStatus("http", host, port, 2)
+	status, err := GetHostStatus("http", host, port, pskPath, 2)
 
 	// check basic attributes of response
 	assert.Nil(err)
@@ -53,6 +54,7 @@ func TestGetClusterStatuses(t *testing.T) {
 	cfg := config.Load("")
 	cfg.AppControlDPort = port
 	cfg.AppControlDScheme = "http"
+	cfg.AppControlDPSKPath = "../var/app-controld-psk"
 	cfg.Topology = map[string]config.Environment{
 		"dev": config.Environment{
 			Clusters: map[string]config.Cluster{
