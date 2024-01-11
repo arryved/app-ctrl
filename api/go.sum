@@ -13,8 +13,8 @@ github.com/stretchr/testify v1.7.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/
 github.com/stretchr/testify v1.8.0/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO+kdMU+MU=
 github.com/stretchr/testify v1.8.2 h1:+h33VjcLVPDHtOdpUCuF+7gSuG3yGIftsP1YvFihtJ8=
 github.com/stretchr/testify v1.8.2/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o6fzry7u4=
-github.com/arryved/app-ctrl/daemon v0.0.0-20230309180210-9d6a9c63e4ea h1:97+hW0nnCwPYSh1i5KXZ0DuxR3wiYhFGXEQWiT5PwNw=
-github.com/arryved/app-ctrl/daemon v0.0.0-20230309180210-9d6a9c63e4ea/go.mod h1:L4fgwuWEXAr5I0vlmNtyaECsEcOSkKkAq0GA5iZQev0=
+github.com/arryved/app-ctrl/daemon v0.0.0-20230517213303-b5e7b1fa8791 h1:dSZ/xX/xHsjvhYDq46I4sHC/62/jXHRNRKprUEGgHtk=
+github.com/arryved/app-ctrl/daemon v0.0.0-20230517213303-b5e7b1fa8791/go.mod h1:3pAX3Zko8r4ewjvflO5DQlUsLNu6Rq9mwN3uz31EHVQ=
 golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8 h1:0A+M6Uqn+Eje4kHMK80dtF3JCXC4ykBgQG4Fe06QRhQ=
 golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+SDo693bJlVdllGtEeKM=

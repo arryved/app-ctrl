@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.2
-	github.com/arryved/app-ctrl/daemon v0.0.0-20230309180210-9d6a9c63e4ea
+	github.com/arryved/app-ctrl/daemon v0.0.0-20230517213303-b5e7b1fa8791
 	gopkg.in/yaml.v2 v2.4.0
 )
 

@@ -9,7 +9,7 @@ arch: "amd64"
 platform: "linux"
 
 # TODO - source version from env and/or generate programmatically
-version: "1.2.0"
+version: "1.2.1"
 section: "default"
 priority: "extra"
 replaces: []
