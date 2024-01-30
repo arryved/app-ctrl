@@ -26,7 +26,13 @@ We build this as a debian package in the build/ directory:
 ```
 make package
 ```
-This task specifically builds a linux/amd64 binary. For now, manually upload & release this on arryved-repo.prod.arryved.com.
+This task specifically builds a linux/amd64 binary.
+
+## Deploy
+This will deploy the package to the `arryved-apt` repo:
+```
+make deploy
+```
 
 ## Install
 
