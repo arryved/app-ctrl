@@ -1,4 +1,7 @@
-.PHONY: app-control-dist deps test coverage package clean
+PACKAGE_NAME = app-controld
+VERSION      = 0.1.4
+
+.PHONY: app-control-dist deploy deps test coverage package clean
 
 app-controld: $(shell find . -type f -name "*.go") deps
 	go build .
@@ -20,3 +23,6 @@ package: app-controld-dist
 
 clean:
 	rm app-controld coverage.out build/*
+
+deploy: package
+	gcloud artifacts apt upload arryved-apt --location=us-central1 --project=arryved-tools --source=build/$(PACKAGE_NAME)_$(VERSION)_amd64.deb
