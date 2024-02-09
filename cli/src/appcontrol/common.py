@@ -8,7 +8,7 @@ constants = {
             "dev": "https://app-control.dev.arryved.com:1026",
             "prod": "https://app-control.prod.arryved.com:1026",
             "sandbox": "https://app-control.dev.arryved.com:1026",
-            "staging": "https://app-control.prod.arryved.com:1026",
+            "stg": "https://app-control.stg.arryved.com:1026",
         },
 
         "repo_name": "arryved-app-control-config",
