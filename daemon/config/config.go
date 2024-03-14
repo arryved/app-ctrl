@@ -39,6 +39,9 @@ type Config struct {
 }
 
 type AppDef struct {
+	// root path on disk for app
+	AppRoot string `yaml:"root"`
+
 	// Type of app (see enum below)
 	Type AppType `yaml:"type"`
 

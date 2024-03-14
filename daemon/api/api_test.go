@@ -20,8 +20,8 @@ func TestNew(t *testing.T) {
 	assert := assert.New(t)
 
 	cfg := config.Load("../config/mock-config.yml")
-	ch := make(chan map[string]model.Status, 1)
-	api := New(cfg, ch)
+	cache := model.NewStatusCache()
+	api := New(cfg, cache)
 
 	assert.Equal(cfg, api.cfg)
 }
@@ -34,14 +34,14 @@ func TestStart(t *testing.T) {
 	varDir := path.Join(cwd, "../var")
 	cfg.CrtPath = path.Join(varDir, "service.crt")
 	cfg.KeyPath = path.Join(varDir, "service.key")
-	ch := make(chan map[string]model.Status, 1)
+	cache := model.NewStatusCache()
 
-	api := New(cfg, ch)
+	api := New(cfg, cache)
 	go api.Start()
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	resp, err := http.Get(fmt.Sprintf("https://localhost:%d/", cfg.Port))
 
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.NotNil(resp)
 	assert.Equal("404 Not Found", resp.Status)
 	assert.Equal(404, resp.StatusCode)

@@ -9,6 +9,7 @@ import (
 	"github.com/arryved/app-ctrl/daemon/api"
 	"github.com/arryved/app-ctrl/daemon/config"
 	"github.com/arryved/app-ctrl/daemon/model"
+	"github.com/arryved/app-ctrl/daemon/runners"
 )
 
 const (
@@ -34,11 +35,13 @@ func main() {
 	// TODO - ship logs to fluentd/log aggregation
 	// TODO - collect and expose metrics
 
+	// thread-safe status map
+	statusCache := model.NewStatusCache()
+
 	// start background status runner
-	statusCh := make(chan map[string]model.Status, 1)
-	go api.StatusRunner(cfg, statusCh)
+	go runners.StatusRunner(cfg, statusCache)
 
 	// start app-controld API
-	api := api.New(cfg, statusCh)
+	api := api.New(cfg, statusCache)
 	api.Start()
 }

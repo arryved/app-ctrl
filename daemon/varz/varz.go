@@ -62,7 +62,7 @@ func Check(varzSpec config.Varz) VarzResult {
 
 	err = json.Unmarshal(body, &result)
 	if err != nil {
-		log.Warnf("Could not unmarshale varz body from url=%s, error=%v", url, err)
+		log.Warnf("Could not unmarshal varz body from url=%s, error=%v", url, err)
 		return result
 	}
 

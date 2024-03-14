@@ -14,19 +14,16 @@ import (
 )
 
 type Api struct {
-	cfg           *config.Config
-	StatusChannel chan map[string]model.Status
+	cfg         *config.Config
+	StatusCache *model.StatusCache
 }
 
 func (a *Api) Start() error {
 	cfg := a.cfg
 
 	mux := http.NewServeMux()
-
-	log.Info("making status cache")
-	cache := make(map[string]model.Status)
-
-	mux.HandleFunc("/status", ConfiguredHandlerStatus(cfg, a.StatusChannel, cache))
+	mux.HandleFunc("/status", NewConfiguredHandlerStatus(cfg, a.StatusCache))
+	mux.HandleFunc("/healthz", NewConfiguredHandlerHealthz(cfg, a.StatusCache))
 
 	tlsConfig := &tls.Config{
 		CipherSuites:             common.CipherSuitesFromConfig(cfg.TLS.Ciphers),
@@ -55,10 +52,10 @@ func (a *Api) Start() error {
 	return err
 }
 
-func New(cfg *config.Config, ch chan map[string]model.Status) *Api {
+func New(cfg *config.Config, cache *model.StatusCache) *Api {
 	api := &Api{
-		cfg:           cfg,
-		StatusChannel: ch,
+		cfg:         cfg,
+		StatusCache: cache,
 	}
 	return api
 }

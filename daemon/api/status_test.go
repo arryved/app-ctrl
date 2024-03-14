@@ -13,45 +13,26 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/arryved/app-ctrl/daemon/config"
 	"github.com/arryved/app-ctrl/daemon/model"
+	"github.com/arryved/app-ctrl/daemon/runners"
 )
-
-func mockVarzListener() int {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/varz", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{
-            "server.info": {
-                "githash": "xxxxxxxxxx",
-                "type": "API",
-                "version": "1.13.0"
-            }
-        }`))
-	})
-
-	srv := httptest.NewUnstartedServer(mux)
-	srv.Start()
-
-	time.Sleep(1 * time.Second)
-	return srv.Listener.Addr().(*net.TCPAddr).Port
-}
 
 func TestStatusHandler(t *testing.T) {
 	assert := assert.New(t)
 
 	// mock config, change varz port to match mock listener
 	cfg := config.Load("../config/mock-config.yml")
-	varzPort := mockVarzListener()
+	varzPort := mockVarzListenerForStatus()
 	cfg.AptPath = "./test_objects/mock_apt"
 	cfg.AppDefs["arryved-api"].Varz.Port = varzPort
 
-	// stub channel and cache to configure the handler with
+	// stub channel to configure the handler with
 	// handler will be the object under test
-	ch := make(chan map[string]model.Status, 1)
-	cache := make(map[string]model.Status)
-	handler := http.HandlerFunc(ConfiguredHandlerStatus(cfg, ch, cache))
+	cache := model.NewStatusCache()
+	handler := http.HandlerFunc(NewConfiguredHandlerStatus(cfg, cache))
 
-	// get one status and queue up for the handler via the channel
-	statuses, _ := getStatuses(cfg)
-	ch <- statuses
+	// mock set of statuses and queue up for the handler
+	statuses, _ := runners.GetStatuses(cfg)
+	cache.SetStatuses(statuses)
 
 	// make the request using a test handler + responser pair
 	responder := httptest.NewRecorder()
@@ -59,7 +40,7 @@ func TestStatusHandler(t *testing.T) {
 	handler.ServeHTTP(responder, req)
 
 	// expect no err and an OK status
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.Equal(200, responder.Code)
 
 	// unmarshal to confirm confirm results
@@ -67,7 +48,7 @@ func TestStatusHandler(t *testing.T) {
 	err = json.Unmarshal(responder.Body.Bytes(), &results)
 
 	// should have 11 results (from the mock config)
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.Len(results, 11)
 
 	// deeply check a specific result
@@ -96,4 +77,23 @@ func TestStatusHandler(t *testing.T) {
 	assert.Equal(13, result.Versions.Running.Minor)
 	assert.Equal(0, result.Versions.Running.Patch)
 	assert.Equal(-1, result.Versions.Running.Build)
+}
+
+func mockVarzListenerForStatus() int {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/varz", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{
+            "server.info": {
+                "githash": "xxxxxxxxxx",
+                "type": "API",
+                "version": "1.13.0"
+            }
+        }`))
+	})
+
+	srv := httptest.NewUnstartedServer(mux)
+	srv.Start()
+
+	time.Sleep(1 * time.Second)
+	return srv.Listener.Addr().(*net.TCPAddr).Port
 }

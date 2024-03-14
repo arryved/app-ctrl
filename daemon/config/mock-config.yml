@@ -1,6 +1,6 @@
 # This config is used for testing; keep real config in ansible
 ---
-logLevel: info
+logLevel: debug
 pollIntervalSec: 5
 readTimeoutS: 30
 writeTimeoutS: 10
@@ -21,6 +21,7 @@ aptPath: "./api/mock_apt"
 
 appDefs:
   arryved-api:
+    root: /export/hda3/arryved
     type: ONLINE
     healthz:
       - port: 10010
@@ -29,8 +30,10 @@ appDefs:
     varz:
       port: 10010
   arryved-customer:
+    root: /export/hda3/customer
     type: UNKNOWN
   arryved-insider:
+    root: /export/hda3/insider
     type: ONLINE
     healthz:
       - port: 10998
@@ -39,14 +42,17 @@ appDefs:
     varz:
       port: 10998
   arryved-integration:
+    root: /export/hda3/integration
     type: ONLINE
     healthz:
       - port: 12010
     varz:
       port: 12010
   arryved-java:
+    root: /export/hda3/java
     type: RUNTIME
   arryved-merchant:
+    root: /export/hda3/merchant
     type: ONLINE
     healthz:
       - port: 13010
@@ -59,6 +65,7 @@ appDefs:
   arryved-onlineordering:
     type: UNKNOWN
   arryved-portal:
+    root: /export/hda3/expo
     type: ONLINE
     healthz:
       - port: 443
