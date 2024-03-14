@@ -1,62 +1,27 @@
-package api
+package runners
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
-	"net/http"
+	"os"
 	"os/exec"
 	"regexp"
 	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/arryved/app-ctrl/daemon/clients/healthz"
 	"github.com/arryved/app-ctrl/daemon/config"
-	"github.com/arryved/app-ctrl/daemon/healthz"
 	"github.com/arryved/app-ctrl/daemon/model"
 	"github.com/arryved/app-ctrl/daemon/varz"
 )
 
-// Handler for /status
-func ConfiguredHandlerStatus(
-	cfg *config.Config,
-	ch chan map[string]model.Status,
-	cache map[string]model.Status) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("content-type", "application/json")
-		httpStatus := http.StatusOK
+const oorFilename = ".oor"
 
-		log.Debugf("Handler channel=%v", ch)
-		if len(ch) == 0 {
-			// no result yet; use cache
-			log.Debug("no result yet, rely on cache")
-		} else {
-			// pull latest result and cache it
-			log.Debug("pull latest result and cache it")
-			cache = <-ch
-		}
-
-		responseBody, err := json.Marshal(cache)
-		if err != nil {
-			httpStatus = http.StatusInternalServerError
-			log.Errorf("error marshalling statuses: %v", err.Error())
-			errorBody := fmt.Sprintf("{\"error\": \"%s\"}", err.Error())
-			w.WriteHeader(httpStatus)
-			w.Write([]byte(errorBody))
-			return
-		}
-
-		log.Infof("%s %s %s %d", r.RemoteAddr, r.Method, r.URL, httpStatus)
-		log.Debugf("response body=%s", string(responseBody))
-		w.WriteHeader(httpStatus)
-		w.Write(responseBody)
-	}
-}
-
-func StatusRunner(cfg *config.Config, ch chan map[string]model.Status) {
+func StatusRunner(cfg *config.Config, cache *model.StatusCache) {
 	for {
 		// get the latest values
-		statuses, err := getStatuses(cfg)
+		statuses, err := GetStatuses(cfg)
 		if err != nil {
 			log.Errorf("error getting statuses: %v", err)
 			log.Debug("status runner sleeping")
@@ -64,14 +29,9 @@ func StatusRunner(cfg *config.Config, ch chan map[string]model.Status) {
 			continue
 		}
 
-		// if there's a value on the channel already, get rid of it in favor of the new one
-		log.Debugf("Runner channel=%v", ch)
-		if len(ch) > 0 {
-			log.Debug("discarding stale value on channel")
-			<-ch
-		}
-		log.Debugf("sending statuses = %v", statuses)
-		ch <- statuses
+		// update the cache
+		log.Debugf("Updating the cache")
+		cache.SetStatuses(statuses)
 
 		// insert pause to prevent hard busy-wait
 		log.Debug("status runner sleeping")
@@ -79,7 +39,7 @@ func StatusRunner(cfg *config.Config, ch chan map[string]model.Status) {
 	}
 }
 
-func getStatuses(cfg *config.Config) (map[string]model.Status, error) {
+func GetStatuses(cfg *config.Config) (map[string]model.Status, error) {
 	statuses := map[string]model.Status{}
 
 	versionsByApp, err := getInstalledVersions(cfg)
@@ -129,11 +89,52 @@ func runHealthChecks(appDef config.AppDef) []model.HealthResult {
 	if appDef.Type != config.Online {
 		return results
 	}
+
+	oor := isOOR(appDef)
+
 	for i := range appDef.Healthz {
 		result := healthz.Check(appDef.Healthz[i])
+		// check for OOR file in app root; override to force unhealthy check if the OOR file is on disk
+		if oor {
+			result.OOR = true
+			result.Healthy = false
+		}
 		results = append(results, result)
 	}
 	return results
+}
+
+func isOOR(appDef config.AppDef) bool {
+	root := appDef.AppRoot
+	path := fmt.Sprintf("%s/%s", root, oorFilename)
+	_, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return true
+}
+
+func SetOOR(appDef config.AppDef) error {
+	root := appDef.AppRoot
+	path := fmt.Sprintf("%s/%s", root, oorFilename)
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	return nil
+}
+
+func UnsetOOR(appDef config.AppDef) error {
+	root := appDef.AppRoot
+	path := fmt.Sprintf("%s/%s", root, oorFilename)
+	err := os.Remove(path)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func getInstalledVersions(cfg *config.Config) (map[string]model.Version, error) {
