@@ -16,8 +16,10 @@ warnings.filterwarnings("ignore")
 @click.command()
 @click.option('-e', '--environment', required=True)
 @click.option('-a', '--application', required=False, default="")
-@click.option('--canary-only', required=False, default=False, is_flag=True)
-def status(environment, application, canary_only):
+@click.option('--canary', 'canary', required=False, flag_value='canary', help="Show only canary hosts")
+@click.option('--no-canary', 'canary', required=False, flag_value='no-canary', help="Do not show canary hosts")
+
+def status(environment, application, canary):
     action = "status"
     api_host = constants["api_hosts_by_env"][environment]
     url = (f"{api_host}/{action}/{environment}/{application}")
@@ -34,10 +36,10 @@ def status(environment, application, canary_only):
         exit()
 
     result = json.loads(response.text)
-    print_status_table(application, result, canary_only)
+    print_status_table(application, result, canary)
 
 
-def print_status_table(application, result, canary_only):
+def print_status_table(application, result, canary):
     table = ANSITable(
         Column("Application", headstyle="bold"),
         Column("Host", headstyle="bold"),
@@ -56,8 +58,8 @@ def print_status_table(application, result, canary_only):
 
     for application, result in results.items():
         for host, status in result["hostStatuses"].items():
-            canary = "canary" if host in result["attributes"]["canaries"] else ""
-            meta = ','.join([canary])
+            is_canary = "canary" if host in result["attributes"]["canaries"] else ""
+            meta = ','.join([is_canary])
             installed = "<<red>>?"
             running = "<<red>>?"
             config = "<<red>>?"
@@ -76,7 +78,9 @@ def print_status_table(application, result, canary_only):
             healths = " ".join(healths)
             color = "red" if "?" in healths or "DOWN" in healths else "green"
             healths = f"<<{color}>>{healths}" if healths else "n/a"
-            if canary_only and not canary:
+            if canary == "canary" and not is_canary:
+                pass
+            elif canary == "no-canary" and is_canary:
                 pass
             else:
                 table.row(application, host, meta, installed, running, config, healths)
