@@ -15,28 +15,29 @@ warnings.filterwarnings("ignore")
 
 @click.command()
 @click.option('-e', '--environment', required=True)
-@click.option('-a', '--application', required=False, default="")
+@click.option('-a', '--application', required=False, default=[""], multiple=True)
 @click.option('--canary', 'canary', required=False, flag_value='canary', help="Show only canary hosts")
 @click.option('--no-canary', 'canary', required=False, flag_value='no-canary', help="Do not show canary hosts")
 
 def status(environment, application, canary):
     action = "status"
     api_host = constants["api_hosts_by_env"][environment]
-    url = (f"{api_host}/{action}/{environment}/{application}")
-    click.echo(click.style(f"Connecting to {url} ...", fg="green"))
+    for app in application:
+        url = (f"{api_host}/{action}/{environment}/{app}")
+        click.echo(click.style(f"Connecting to {url} ...", fg="green"))
 
-    with click_spinner.spinner():
-        # TODO - use CA cert
-        response = requests.get(url, verify=False)
+        with click_spinner.spinner():
+            # TODO - use CA cert
+            response = requests.get(url, verify=False)
 
-    status_code = math.floor(response.status_code / 100)
-    if status_code == 5:
-        decoded = json.loads(response.text)
-        click.echo(click.style(f"Server experienced an error: {decoded}", fg="red"), err=True)
-        exit()
+        status_code = math.floor(response.status_code / 100)
+        if status_code == 5:
+            decoded = json.loads(response.text)
+            click.echo(click.style(f"Server experienced an error: {decoded}", fg="red"), err=True)
+            exit()
 
-    result = json.loads(response.text)
-    print_status_table(application, result, canary)
+        result = json.loads(response.text)
+        print_status_table(app, result, canary)
 
 
 def print_status_table(application, result, canary):
