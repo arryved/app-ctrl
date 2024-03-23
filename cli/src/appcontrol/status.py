@@ -18,8 +18,9 @@ warnings.filterwarnings("ignore")
 @click.option('-a', '--application', required=False, default=[""], multiple=True)
 @click.option('--canary', 'canary', required=False, flag_value='canary', help="Show only canary hosts")
 @click.option('--no-canary', 'canary', required=False, flag_value='no-canary', help="Do not show canary hosts")
+@click.option('--short/--long', 'short', default=False, help="More concise status output")
 
-def status(environment, application, canary):
+def status(environment, application, canary, short):
     action = "status"
     api_host = constants["api_hosts_by_env"][environment]
     for app in application:
@@ -37,10 +38,10 @@ def status(environment, application, canary):
             exit()
 
         result = json.loads(response.text)
-        print_status_table(app, result, canary)
+        print_status_table(app, result, canary, short, environment)
 
 
-def print_status_table(application, result, canary):
+def print_status_table(application, result, canary, short, env):
     table = ANSITable(
         Column("Application", headstyle="bold"),
         Column("Host", headstyle="bold"),
@@ -58,7 +59,9 @@ def print_status_table(application, result, canary):
         results = {application: result}
 
     for application, result in results.items():
+        name = application.replace("arryved-", "") if short else application
         for host, status in result["hostStatuses"].items():
+            host_address = host.replace("." + env + ".arryved.com", "") if short else host
             is_canary = "canary" if host in result["attributes"]["canaries"] else ""
             meta = ','.join([is_canary])
             installed = "<<red>>?"
@@ -84,7 +87,7 @@ def print_status_table(application, result, canary):
             elif canary == "no-canary" and is_canary:
                 pass
             else:
-                table.row(application, host, meta, installed, running, config, healths)
+                table.row(name, host_address, meta, installed, running, config, healths)
 
     table.print()
 
