@@ -20,11 +20,12 @@ warnings.filterwarnings("ignore")
 @click.option('--no-canary', 'canary', required=False, flag_value='no-canary', help="Do not show canary hosts")
 @click.option('--short/--long', 'short', default=False, help="More concise status output")
 @click.option('-v', '--verbose', count=True, help='Enables verbose mode')
-
 def status(verbose, environment, application, canary, short):
     action = "status"
     api_host = constants["api_hosts_by_env"][environment]
     for app in application:
+        if app.startswith("arryved-") is False and len(app) > 0:
+            app = "arryved-" + app
         url = (f"{api_host}/{action}/{environment}/{app}")
         click.echo(click.style(f"Connecting to {url} ...", fg="green"))
 
