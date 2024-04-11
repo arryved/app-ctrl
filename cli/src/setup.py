@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='app-control',
-    version='2.0.1',
+    version='2.1.0',
 
     description='app-control CLI',
     long_description_content_type='text/markdown',
@@ -17,6 +17,9 @@ setup(
         'click-spinner>=0.1',
         'colorama>=0.4',
         'pyyaml>=6',
+        'requests',
+        'deepmerge',
+        'google-cloud-storage'
     ],
 
     entry_points={

@@ -15,29 +15,39 @@ warnings.filterwarnings("ignore")
 
 @click.command()
 @click.option('-e', '--environment', required=True)
-@click.option('-a', '--application', required=False, default="")
-@click.option('--canary-only', required=False, default=False, is_flag=True)
-def status(environment, application, canary_only):
+@click.option('-a', '--application', required=False, default=[""], multiple=True)
+@click.option('--canary', 'canary', required=False, flag_value='canary', help="Show only canary hosts")
+@click.option('--no-canary', 'canary', required=False, flag_value='no-canary', help="Do not show canary hosts")
+@click.option('--short/--long', 'short', default=False, help="More concise status output")
+@click.option('-v', '--verbose', count=True, help='Enables verbose mode')
+def status(verbose, environment, application, canary, short):
     action = "status"
     api_host = constants["api_hosts_by_env"][environment]
-    url = (f"{api_host}/{action}/{environment}/{application}")
-    click.echo(click.style(f"Connecting to {url} ...", fg="green"))
+    for app in application:
+        if app.startswith("arryved-") is False and len(app) > 0:
+            app = "arryved-" + app
+        url = (f"{api_host}/{action}/{environment}/{app}")
+        click.echo(click.style(f"Connecting to {url} ...", fg="green"))
 
-    with click_spinner.spinner():
-        # TODO - use CA cert
-        response = requests.get(url, verify=False)
+        with click_spinner.spinner():
+            # TODO - use CA cert
+            try:
+                response = requests.get(url, verify=False)
+            except Exception as e:
+                msg = str(e) if verbose > 0 else "Oops! Something went wrong. Check that you are connected to the VPN, or run with -v for more details."
+                raise click.UsageError(msg)
 
-    status_code = math.floor(response.status_code / 100)
-    if status_code == 5:
-        decoded = json.loads(response.text)
-        click.echo(click.style(f"Server experienced an error: {decoded}", fg="red"), err=True)
-        exit()
+        status_code = math.floor(response.status_code / 100)
+        if status_code == 5:
+            decoded = json.loads(response.text)
+            click.echo(click.style(f"Server experienced an error: {decoded}", fg="red"), err=True)
+            exit()
 
-    result = json.loads(response.text)
-    print_status_table(application, result, canary_only)
+        result = json.loads(response.text)
+        print_status_table(app, result, canary, short, environment)
 
 
-def print_status_table(application, result, canary_only):
+def print_status_table(application, result, canary, short, env):
     table = ANSITable(
         Column("Application", headstyle="bold"),
         Column("Host", headstyle="bold"),
@@ -55,9 +65,11 @@ def print_status_table(application, result, canary_only):
         results = {application: result}
 
     for application, result in results.items():
+        name = application.replace("arryved-", "") if short else application
         for host, status in result["hostStatuses"].items():
-            canary = "canary" if host in result["attributes"]["canaries"] else ""
-            meta = ','.join([canary])
+            host_address = host.replace("." + env + ".arryved.com", "") if short else host
+            is_canary = "canary" if host in result["attributes"]["canaries"] else ""
+            meta = ','.join([is_canary])
             installed = "<<red>>?"
             running = "<<red>>?"
             config = "<<red>>?"
@@ -76,10 +88,12 @@ def print_status_table(application, result, canary_only):
             healths = " ".join(healths)
             color = "red" if "?" in healths or "DOWN" in healths else "green"
             healths = f"<<{color}>>{healths}" if healths else "n/a"
-            if canary_only and not canary:
+            if canary == "canary" and not is_canary:
+                pass
+            elif canary == "no-canary" and is_canary:
                 pass
             else:
-                table.row(application, host, meta, installed, running, config, healths)
+                table.row(name, host_address, meta, installed, running, config, healths)
 
     table.print()
 
