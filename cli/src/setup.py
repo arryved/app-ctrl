@@ -17,6 +17,9 @@ setup(
         'click-spinner>=0.1',
         'colorama>=0.4',
         'pyyaml>=6',
+        'requests',
+        'deepmerge',
+        'google-cloud-storage'
     ],
 
     entry_points={
