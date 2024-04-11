@@ -19,8 +19,9 @@ warnings.filterwarnings("ignore")
 @click.option('--canary', 'canary', required=False, flag_value='canary', help="Show only canary hosts")
 @click.option('--no-canary', 'canary', required=False, flag_value='no-canary', help="Do not show canary hosts")
 @click.option('--short/--long', 'short', default=False, help="More concise status output")
+@click.option('-v', '--verbose', count=True, help='Enables verbose mode')
 
-def status(environment, application, canary, short):
+def status(verbose, environment, application, canary, short):
     action = "status"
     api_host = constants["api_hosts_by_env"][environment]
     for app in application:
@@ -29,7 +30,11 @@ def status(environment, application, canary, short):
 
         with click_spinner.spinner():
             # TODO - use CA cert
-            response = requests.get(url, verify=False)
+            try:
+                response = requests.get(url, verify=False)
+            except Exception as e:
+                msg = str(e) if verbose > 0 else "Oops! Something went wrong. Check that you are connected to the VPN, or run with -v for more details."
+                raise click.UsageError(msg)
 
         status_code = math.floor(response.status_code / 100)
         if status_code == 5:
