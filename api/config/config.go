@@ -20,6 +20,9 @@ type Config struct {
 	ReadTimeoutS  int `yaml:"readTimeoutS"`
 	WriteTimeoutS int `yaml:"writeTimeoutS"`
 
+	// kubeconfig yaml path
+	KubeConfigPath string `yaml:"kubeConfigPath"`
+
 	// TLS material locations
 	KeyPath string `yaml:"keyPath"`
 	CrtPath string `yaml:"crtPath"`
@@ -38,11 +41,21 @@ type Config struct {
 type Topology map[string]Environment
 
 type Environment struct {
-	Clusters map[string]Cluster `yaml:"clusters"`
+	Clusters []Cluster `yaml:"clusters"`
 }
 
 type Cluster struct {
-	Hosts map[string]Host `yaml:"hosts"`
+	Id      ClusterId       `yaml:"id"`
+	Hosts   map[string]Host `yaml:"hosts"`
+	Kind    string          `yaml:"kind"`
+	Runtime string          `yaml:"runtime"`
+}
+
+// uniquely identifies them, enforce this constraint as needed (using as a map key, for instance)
+type ClusterId struct {
+	App     string `json:"app" yaml:"app"`
+	Region  string `json:"region" yaml:"region"`
+	Variant string `json:"variant" yaml:"variant"`
 }
 
 type Host struct {
@@ -104,8 +117,17 @@ func (c *Config) setDefaults() {
 			MinVersion: "1.2",
 		}
 	}
-
-	log.Infof("Applied defaults to all unset fields")
+	// if this is called in a struct member function (c being a *config.Config)
+	// then does changing the Variant actually persist? or is this a copy somehow
+	for i, env := range c.Topology {
+		for j, cluster := range env.Clusters {
+			if cluster.Id.Variant == "" {
+				cluster.Id.Variant = "default"
+				c.Topology[i].Clusters[j].Id.Variant = "default"
+			}
+		}
+	}
+	log.Debugf("config %v", c)
 }
 
 // load and merge settings from file if it exists
@@ -123,4 +145,7 @@ func (c *Config) loadFile(configPath string) {
 	}
 
 	log.Infof("Loaded config yaml from path='%s'", configPath)
+	// TODO run validate()
 }
+
+// TODO provide a validate() method to enforce values, uniqueness constraints, etc.
