@@ -1,4 +1,8 @@
-wheel: distclean $(shell find src -type f -name "*.py")
+deps: Pipfile
+	pipx install pipenv
+	pipenv run pip install keyring keyrings.google-artifactregistry-auth
+
+wheel: distclean deps $(shell find src -type f -name "*.py")
 	(PIP_NO_INPUT=1 python3 -m build src)
 
 distclean:
