@@ -19,6 +19,7 @@ func (a *Api) Start() error {
 	cfg := a.cfg
 	mux := http.NewServeMux()
 	mux.HandleFunc("/status/", ConfiguredHandlerStatus(cfg))
+	mux.HandleFunc("/deploy/", ConfiguredHandlerDeploy(cfg))
 
 	tlsConfig := &tls.Config{
 		CipherSuites:             CipherSuitesFromConfig(cfg.TLS.Ciphers),
@@ -86,4 +87,57 @@ func contains(list []string, match string) bool {
 		}
 	}
 	return false
+}
+
+func handleBadRequest(w http.ResponseWriter, msg string) {
+	httpStatus := http.StatusBadRequest
+	errorBody := fmt.Sprintf("{\"error\": \"%s\"}", msg)
+	w.WriteHeader(httpStatus)
+	w.Write([]byte(errorBody))
+	return
+}
+
+func handleNotFound(w http.ResponseWriter, msg string) {
+	httpStatus := http.StatusNotFound
+	errorBody := fmt.Sprintf("{\"not found\": \"%s\"}", msg)
+	w.WriteHeader(httpStatus)
+	w.Write([]byte(errorBody))
+	return
+}
+
+func handleInternalServerError(w http.ResponseWriter, err error) {
+	httpStatus := http.StatusInternalServerError
+	errorBody := fmt.Sprintf("{\"error\": \"%s\"}", err.Error())
+	w.WriteHeader(httpStatus)
+	w.Write([]byte(errorBody))
+	return
+}
+
+func handleMethodNotAllowed(w http.ResponseWriter, msg string) {
+	httpStatus := http.StatusMethodNotAllowed
+	errorBody := fmt.Sprintf("{\"error\": \"%s\"}", msg)
+	w.WriteHeader(httpStatus)
+	w.Write([]byte(errorBody))
+	return
+}
+
+func extractQueryParams(r *http.Request) map[string]string {
+	params := make(map[string]string)
+
+	query := r.URL.Query()
+	for key, value := range query {
+		params[key] = value[0]
+	}
+	return params
+}
+
+func findClusterById(cfg *config.Config, env string, id config.ClusterId) (*config.Cluster, error) {
+	for _, cluster := range cfg.Topology[env].Clusters {
+		log.Debug("cluster: %v", cluster)
+		cid := cluster.Id
+		if cid.App == id.App && cid.Region == id.Region && cid.Variant == id.Variant {
+			return &cluster, nil
+		}
+	}
+	return nil, nil
 }

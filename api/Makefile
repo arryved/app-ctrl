@@ -1,5 +1,5 @@
 PACKAGE_NAME = app-control-api
-VERSION      = 1.2.1
+VERSION      = 2.0.0
 
 .PHONY: app-control-api-dist deps test coverage package clean
 
@@ -24,6 +24,6 @@ package: app-control-api-dist
 clean:
 	rm app-control-api coverage.out build/*
 
-.PHONY: deploy
-deploy: package
+.PHONY: release
+release: package
 	gcloud artifacts apt upload arryved-apt --location=us-central1 --project=arryved-tools --source=build/$(PACKAGE_NAME)_$(VERSION)_amd64.deb
