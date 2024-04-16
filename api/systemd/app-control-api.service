@@ -5,7 +5,7 @@ After=network.target
 [Service]
 ExecStart=/usr/local/bin/app-control-api
 Restart=on-failure
-User=daemon
+User=app-control
 
 [Install]
 WantedBy=multi-user.target

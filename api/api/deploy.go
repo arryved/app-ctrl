@@ -9,19 +9,21 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/arryved/app-ctrl/api/config"
+	"github.com/arryved/app-ctrl/api/queue"
 )
 
-type DeployBody struct {
-	Host        string `json:"host"`
-	Region      string `json:"region"`
-	Variant     string `json:"variant"`
+type DeployRequest struct {
 	Concurrency string `json:"concurrency"`
-	Version     string `json:"version"`
 	Principal   string `json:"principal"`
-	Runtime     string `json:"runtime"`
+	Version     string `json:"version"`
 }
 
-func ConfiguredHandlerDeploy(cfg *config.Config) func(http.ResponseWriter, *http.Request) {
+type DeployResponse struct {
+	DeployId string `json:"deployId"` // deployId (blank if not available)
+	Message  string `json:message"`   // message is either of success or failure
+}
+
+func ConfiguredHandlerDeploy(cfg *config.Config, jobQueue *queue.Queue) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		httpStatus := http.StatusOK
@@ -33,8 +35,8 @@ func ConfiguredHandlerDeploy(cfg *config.Config) func(http.ResponseWriter, *http
 			return
 		}
 
-		// parse the POST json request body (via r *http.Request) into a DeployBody
-		var requestBody DeployBody
+		// parse the POST json request body (via r *http.Request) into a DeployRequest
+		var requestBody DeployRequest
 		err := json.NewDecoder(r.Body).Decode(&requestBody)
 		if err != nil {
 			msg := fmt.Sprintf("invalid request body: %s", r.URL)
@@ -42,6 +44,7 @@ func ConfiguredHandlerDeploy(cfg *config.Config) func(http.ResponseWriter, *http
 			handleBadRequest(w, msg)
 			return
 		}
+		log.Debugf("body=%v", requestBody)
 
 		urlElements := strings.Split(r.URL.String(), "/")
 		if len(urlElements) != 6 {
@@ -55,29 +58,62 @@ func ConfiguredHandlerDeploy(cfg *config.Config) func(http.ResponseWriter, *http
 		app := urlElements[3]
 		region := urlElements[4]
 		variant := urlElements[5]
+		clusterId := config.ClusterId{
+			App:     app,
+			Region:  region,
+			Variant: variant,
+		}
 
-		clusterStatus, err := GetClusterStatus(cfg, env, app, region, variant)
+		// if no such cluster, return 404
+		cluster, err := findClusterById(cfg, env, clusterId)
 		if err != nil {
-			log.Errorf("error fetching statuses: %v", err.Error())
+			log.Errorf("error fetching cluster status, cannot submit deploy: %v", err.Error())
 			handleInternalServerError(w, err)
 			return
 		}
-
-		if err == nil && clusterStatus == nil {
-			msg := fmt.Sprintf("cluster not found: %s", r.URL)
+		if cluster == nil {
+			msg := fmt.Sprintf("no such cluster matching id=%v", clusterId)
 			log.Infof(msg)
 			handleNotFound(w, msg)
 			return
 		}
 
-		responseBody, err := json.Marshal(clusterStatus)
+		// enqueue the job onto a job queue for worker pickup
+		job, err := queue.NewJob(requestBody.Principal, queue.DeployJobRequest{
+			Cluster:     clusterId,
+			Concurrency: requestBody.Concurrency,
+			Version:     requestBody.Version,
+		})
 		if err != nil {
-			log.Errorf("error marshalling statuses: %v", err.Error())
+			log.Errorf("error creating new job request, cannot submit deploy: %v", err.Error())
 			handleInternalServerError(w, err)
 			return
 		}
 
-		log.Debugf("response body=%s", string(responseBody))
+		if jobQueue != nil {
+			pubid, err := jobQueue.Enqueue(job)
+			if err != nil {
+				log.Errorf("error enqueing deploy job error=%s", err.Error())
+				handleInternalServerError(w, err)
+				return
+			}
+			log.Infof("enqueued job jobid=%s pubid=%s", job.Id, pubid)
+		} else {
+			log.Warnf("job *not* enqueued since no jobQueue available id=%s", job.Id)
+		}
+
+		// TODO get the id and set a reasonable message
+		responseBody, err := json.Marshal(DeployResponse{
+			DeployId: job.Id,
+			Message:  "deploy job enqueued",
+		})
+		if err != nil {
+			log.Errorf("error marshaling response body: %v", err.Error())
+			handleInternalServerError(w, err)
+			return
+		}
+
+		log.Debugf("response body=%v", responseBody)
 		w.WriteHeader(httpStatus)
 		w.Write(responseBody)
 	}

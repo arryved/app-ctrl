@@ -1,5 +1,5 @@
 PACKAGE_NAME = app-control-api
-VERSION      = 2.0.0
+VERSION      = 2.1.0
 
 .PHONY: app-control-api-dist deps test coverage package clean
 
@@ -13,7 +13,7 @@ deps:
 	go mod tidy
 
 test:
-	go test -count=1 -coverprofile=coverage.out ./...
+	go test -v -count=1 -coverprofile=coverage.out ./...
 
 coverage: test
 	go tool cover -html=coverage.out

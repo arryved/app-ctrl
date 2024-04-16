@@ -35,6 +35,9 @@ type Config struct {
 
 	// Layout of the app clusters TODO - (statically configured for now, add discovery later)
 	Topology Topology `yaml:"topology"`
+
+	// Config for work queue client
+	Queue QueueConfig `yaml:"queue"`
 }
 
 // map of environment to clusters
@@ -48,6 +51,7 @@ type Cluster struct {
 	Id      ClusterId       `yaml:"id"`
 	Hosts   map[string]Host `yaml:"hosts"`
 	Kind    string          `yaml:"kind"`
+	Repo    string          `yaml:"repo"`
 	Runtime string          `yaml:"runtime"`
 }
 
@@ -68,6 +72,12 @@ type TLSConfig struct {
 
 	// minimum TLS version to use
 	MinVersion string
+}
+
+type QueueConfig struct {
+	Project      string
+	Topic        string
+	Subscription string
 }
 
 // Load the config from provided path
@@ -117,13 +127,11 @@ func (c *Config) setDefaults() {
 			MinVersion: "1.2",
 		}
 	}
-	// if this is called in a struct member function (c being a *config.Config)
-	// then does changing the Variant actually persist? or is this a copy somehow
-	for i, env := range c.Topology {
+	for envName, env := range c.Topology {
 		for j, cluster := range env.Clusters {
 			if cluster.Id.Variant == "" {
 				cluster.Id.Variant = "default"
-				c.Topology[i].Clusters[j].Id.Variant = "default"
+				c.Topology[envName].Clusters[j].Id.Variant = "default"
 			}
 		}
 	}
