@@ -1,0 +1,69 @@
+# This config is used for testing; keep real config in ansible
+---
+logLevel: info
+readTimeoutS: 5
+writeTimeoutS: 10
+
+kubeConfigPath: config/mock-kubeconfig.yaml
+
+queue:
+  project: arryved-177921
+  topic: app-control-jobs
+  subscription: app-control-jobs--app-control
+
+tls:
+  ciphers:
+    - TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA
+    - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+    - TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA
+    - TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA
+    - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+    - TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA
+    - TLS_RSA_WITH_AES_128_CBC_SHA
+    - TLS_RSA_WITH_AES_256_CBC_SHA
+  minVersion: "1.2"
+
+topology:
+  dev:
+    clusters:
+    - id:
+        app: arryved-api
+        region: central
+      kind: online
+      runtime: GCE
+      repo: arryved-apt
+      hosts:
+        dev-api.dev.arryved.com:
+        dev-api2.dev.arryved.com:
+  prod:
+    clusters:
+    - id:
+        app: arryved-api
+        region: central
+      kind: online
+      runtime: GCE
+      repo: arryved-apt
+      hosts:
+        arryved-api0.prod.arryved.com:
+        arryved-api1.prod.arryved.com:
+        arryved-api2.prod.arryved.com:
+        arryved-api3.prod.arryved.com:
+        arryved-api4.prod.arryved.com:
+        canary-api.prod.arryved.com:
+          canary: true
+        canary-api1.prod.arryved.com:
+          canary: true
+  stg:
+    clusters:
+    - id:
+        app: poserp-app
+        region: central
+      kind: online
+      runtime: GKE
+      repo: product-docker
+    - id:
+        app: pay
+        region: central
+      kind: online
+      runtime: GKE
+      repo: product-docker

@@ -32,3 +32,4 @@ tags
 
 build/
 app-control-worker
+var/
