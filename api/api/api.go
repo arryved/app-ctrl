@@ -9,6 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/arryved/app-ctrl/api/config"
+	"github.com/arryved/app-ctrl/api/queue"
 )
 
 type Api struct {
@@ -17,9 +18,17 @@ type Api struct {
 
 func (a *Api) Start() error {
 	cfg := a.cfg
+
+	queueClient, err := queue.NewClient(cfg.Queue)
+	if err != nil {
+		log.Errorf("could not get a queue client, error=%s", err.Error())
+		return err
+	}
+	jobQueue := queue.NewQueue(cfg.Queue, queueClient)
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/status/", ConfiguredHandlerStatus(cfg))
-	mux.HandleFunc("/deploy/", ConfiguredHandlerDeploy(cfg))
+	mux.HandleFunc("/deploy/", ConfiguredHandlerDeploy(cfg, jobQueue))
 
 	tlsConfig := &tls.Config{
 		CipherSuites:             CipherSuitesFromConfig(cfg.TLS.Ciphers),
@@ -36,7 +45,7 @@ func (a *Api) Start() error {
 	}
 
 	log.Infof("Starting HTTPS listener on port=%d", cfg.Port)
-	err := srv.ListenAndServeTLS(
+	err = srv.ListenAndServeTLS(
 		cfg.CrtPath,
 		cfg.KeyPath,
 	)
@@ -133,7 +142,7 @@ func extractQueryParams(r *http.Request) map[string]string {
 
 func findClusterById(cfg *config.Config, env string, id config.ClusterId) (*config.Cluster, error) {
 	for _, cluster := range cfg.Topology[env].Clusters {
-		log.Debug("cluster: %v", cluster)
+		log.Debugf("cluster: %v", cluster)
 		cid := cluster.Id
 		if cid.App == id.App && cid.Region == id.Region && cid.Variant == id.Variant {
 			return &cluster, nil

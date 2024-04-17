@@ -3,54 +3,55 @@
 package api
 
 import (
-	"net"
+	"bytes"
+	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
-	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/arryved/app-ctrl/api/config"
 )
 
-func mockQueue() int {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/deploy", func(w http.ResponseWriter, r *http.Request) {
-		data, _ := os.ReadFile("./test_objects/queue-deploy-response.json")
-		w.Write(data)
-	})
-
-	srv := httptest.NewUnstartedServer(mux)
-	srv.Start()
-
-	time.Sleep(1 * time.Second)
-	return srv.Listener.Addr().(*net.TCPAddr).Port
-}
-
-func TestSubmitAndWait(t *testing.T) {
+func TestSubmitAndObtainDeployId(t *testing.T) {
 	assert := assert.New(t)
-	//port := mockAppControlD()
-	//cfg := config.Load("")
-	//cfg.Queue = port
-	//cfg.Topology = map[string]config.Environment{
-	//"dev": config.Environment{
-	//Clusters: map[string]config.Cluster{
-	//"arryved-api": config.Cluster{
-	//Hosts: map[string]config.Host{
-	//"localhost": config.Host{},
-	//"127.0.0.1": config.Host{
-	//Canary: true,
-	//},
-	//},
-	//},
-	//},
-	//},
-	//}
 
-	// check basic submit/result flow
-	assert.True(true)
-	//submit, err := SubmitDeployJob(cfg, "REQUESTID", "APP", "X.Y.X")
-	//result, err := WaitForResult(cfg, "REQUESTID")
+	// set up a server config
+	cfg := config.Load("../config/mock-config.yml")
 
-	// TODO - check to see that jobs submitted for an app already being acted on are rejected
+	// set up interaction request and recorder for deploy handler
+	recorder := httptest.NewRecorder()
+	handler := http.HandlerFunc(ConfiguredHandlerDeploy(cfg, nil))
+	requestBody := DeployRequest{
+		Concurrency: "1",
+		Version:     "0.1.0",
+		Principal:   "example@arryved.com",
+	}
+	bodyBytes, err := json.Marshal(requestBody)
+	if err != nil {
+		t.Fatalf("could not marshal body for test request err=%s", err.Error())
+	}
+
+	// simulate the API call
+	uri := "/deploy/dev/arryved-api/central/default"
+	req := httptest.NewRequest("POST", uri, bytes.NewBuffer(bodyBytes))
+	handler.ServeHTTP(recorder, req)
+	resp := recorder.Result()
+	responseBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("unable to read test request response body err=%s", err.Error())
+	}
+
+	// Body check basic submit/result flow
+	response := DeployResponse{}
+	err = json.Unmarshal(responseBody, &response)
+	assert.Nil(err)
+	assert.Equal("deploy job enqueued", response.Message)
+	_, err = uuid.Parse(response.DeployId)
+	assert.Nil(err)
 }
+
+// TODO - check to see that jobs submitted for an app already being acted on are rejected

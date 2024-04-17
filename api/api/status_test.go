@@ -57,8 +57,16 @@ func TestGetClusterStatuses(t *testing.T) {
 	cfg.AppControlDPSKPath = "../var/app-controld-psk"
 	cfg.Topology = map[string]config.Environment{
 		"dev": config.Environment{
-			Clusters: map[string]config.Cluster{
-				"arryved-api": config.Cluster{
+			Clusters: []config.Cluster{
+				config.Cluster{
+					Id: config.ClusterId{
+						App:     "arryved-api",
+						Region:  "central",
+						Variant: "default",
+					},
+					Kind:    "online",
+					Repo:    "arryved-apt",
+					Runtime: "GCE",
 					Hosts: map[string]config.Host{
 						"localhost": config.Host{},
 						"127.0.0.1": config.Host{
@@ -70,7 +78,7 @@ func TestGetClusterStatuses(t *testing.T) {
 		},
 	}
 
-	status, err := GetClusterStatus(cfg, "dev", "arryved-api")
+	status, err := GetClusterStatus(cfg, "dev", "arryved-api", "central", "default")
 
 	assert.Nil(err)
 	assert.NotNil(status)

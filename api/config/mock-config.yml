@@ -6,6 +6,11 @@ writeTimeoutS: 10
 
 kubeConfigPath: config/mock-kubeconfig.yaml
 
+queue:
+  project: arryved-177921
+  topic: app-control-jobs
+  subscription: app-control-jobs--app-control
+
 tls:
   ciphers:
     - TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA
@@ -20,6 +25,16 @@ tls:
 
 topology:
   dev:
+    clusters:
+    - id:
+        app: arryved-api
+        region: central
+      kind: online
+      runtime: GCE
+      repo: arryved-apt
+      hosts:
+        dev-api.dev.arryved.com:
+        dev-api2.dev.arryved.com:
   prod:
     clusters:
     - id:
