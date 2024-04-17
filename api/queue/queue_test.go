@@ -30,10 +30,20 @@ func TestEnqueueDeploy(t *testing.T) {
 	assert.NotNil(queue)
 
 	job, err := NewJob("example@arryved.com", DeployJobRequest{
-		Cluster: config.ClusterId{
-			App:     "arryved-api",
-			Region:  "central",
-			Variant: "default",
+		Cluster: config.Cluster{
+			Id: config.ClusterId{
+				App:     "arryved-api",
+				Region:  "central",
+				Variant: "default",
+			},
+			Hosts: map[string]config.Host{
+				"core-api-xyz.dev.arryved.com": {
+					Canary: false,
+				},
+			},
+			Kind:    "online",
+			Repo:    "arryved-apt",
+			Runtime: "GCE",
 		},
 		Concurrency: "1",
 		Version:     "0.1.1",
@@ -66,7 +76,7 @@ func TestDequeueDeploy(t *testing.T) {
 	assert.Equal(job.Principal, "example@arryved.com")
 	assert.Equal(job.Request.(*DeployJobRequest).Concurrency, "1")
 	assert.Equal(job.Request.(*DeployJobRequest).Version, "0.1.1")
-	assert.Equal(job.Request.(*DeployJobRequest).Cluster.App, "arryved-api")
-	assert.Equal(job.Request.(*DeployJobRequest).Cluster.Region, "central")
-	assert.Equal(job.Request.(*DeployJobRequest).Cluster.Variant, "default")
+	assert.Equal(job.Request.(*DeployJobRequest).Cluster.Id.App, "arryved-api")
+	assert.Equal(job.Request.(*DeployJobRequest).Cluster.Id.Region, "central")
+	assert.Equal(job.Request.(*DeployJobRequest).Cluster.Id.Variant, "default")
 }

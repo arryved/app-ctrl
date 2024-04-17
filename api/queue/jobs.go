@@ -16,7 +16,7 @@ type JobRequest interface {
 
 // JobRequest Type for Deploy
 type DeployJobRequest struct {
-	Cluster     config.ClusterId
+	Cluster     config.Cluster
 	Concurrency string
 	Version     string
 }
