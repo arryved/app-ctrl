@@ -80,7 +80,7 @@ func ConfiguredHandlerDeploy(cfg *config.Config, jobQueue *queue.Queue) func(htt
 
 		// enqueue the job onto a job queue for worker pickup
 		job, err := queue.NewJob(requestBody.Principal, queue.DeployJobRequest{
-			Cluster:     clusterId,
+			Cluster:     *cluster,
 			Concurrency: requestBody.Concurrency,
 			Version:     requestBody.Version,
 		})
