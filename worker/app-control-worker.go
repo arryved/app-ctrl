@@ -2,14 +2,17 @@ package main
 
 import (
 	"flag"
+	"fmt"
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/arryved/app-ctrl/api/queue"
 	"github.com/arryved/app-ctrl/worker/config"
+	"github.com/arryved/app-ctrl/worker/worker"
 )
 
 const (
-	config_path_default = "/usr/local/etc/app-control-api.yml"
+	config_path_default = "/usr/local/etc/app-control-worker.yml"
 )
 
 func main() {
@@ -28,10 +31,18 @@ func main() {
 		log.SetLevel(level)
 	}
 
+	client, err := queue.NewClient(cfg.Queue)
+	if err != nil {
+		msg := fmt.Sprintf("Could not get queue client, err=%s", err.Error())
+		log.Error(msg)
+		panic(msg)
+	}
+	jobQueue := queue.NewQueue(cfg.Queue, client)
+
 	// TODO - ship logs to fluentd/log aggregation
 	// TODO - collect and expose metrics
 
 	// start app-control-worker thread(s)
-	worker := worker.New(cfg)
+	worker := worker.New(cfg, jobQueue)
 	worker.Start()
 }

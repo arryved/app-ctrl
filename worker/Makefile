@@ -12,7 +12,7 @@ app-control-worker-dist: $(shell find . -type f -name "*.go") deps
 deps:
 	go mod tidy
 
-test:
+test: deps
 	go test -v -count=1 -coverprofile=coverage.out ./...
 
 coverage: test
@@ -26,4 +26,4 @@ clean:
 
 .PHONY: release
 release: package
-  gcloud artifacts apt upload arryved-apt --location=us-central1 --project=arryved-tools --source=build/$(PACKAGE_NAME)_$(VERSION)_amd64.deb
+	gcloud artifacts apt upload arryved-apt --location=us-central1 --project=arryved-tools --source=build/$(PACKAGE_NAME)_$(VERSION)_amd64.deb

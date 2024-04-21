@@ -14,11 +14,17 @@ type Config struct {
 	AppControlDScheme  string `yaml:"appControlDScheme"`
 	AppControlDPSKPath string `yaml:"appControlDPSKPath"`
 
+	// Arryved env short name
+	Env string `yaml:"env"`
+
 	// kubeconfig yaml path
 	KubeConfigPath string `yaml:"kubeConfigPath"`
 
 	// Min log level
 	LogLevel string `yaml:"logLevel"`
+
+	// Max number of concurrent job threads
+	MaxJobThreads int `yaml:"maxJobThreads"`
 
 	// Config for work queue client
 	Queue apiconfig.QueueConfig `yaml:"queue"`
@@ -39,6 +45,9 @@ func (c *Config) setDefaults() {
 	}
 	if c.KubeConfigPath == "" {
 		c.KubeConfigPath = "/usr/local/etc/app-control-api-kubeconfig.yml"
+	}
+	if c.MaxJobThreads == 0 {
+		c.MaxJobThreads = 8
 	}
 	log.Debugf("config %v", c)
 }

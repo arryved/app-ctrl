@@ -3,7 +3,7 @@
 env: dev
 logLevel: info
 
-kubeConfigPath: ../config/mock-kubeconfig.yaml
+kubeConfigPath: config/mock-kubeconfig.yaml
 
 queue:
   project: arryved-177921
