@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 
 	log "github.com/sirupsen/logrus"
 
@@ -31,6 +32,11 @@ func main() {
 		log.SetLevel(level)
 	}
 
+	// explicitly set ADC
+	err = os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", cfg.ServiceAccountKeyPath)
+	if err != nil {
+		log.Warnf("Could not set GOOGLE_APPLICATION_CREDENTIALS err=%s", err.Error())
+	}
 	client, err := queue.NewClient(cfg.Queue)
 	if err != nil {
 		msg := fmt.Sprintf("Could not get queue client, err=%s", err.Error())

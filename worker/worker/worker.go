@@ -46,13 +46,13 @@ func (w *Worker) Start() {
 			for {
 				log.Debugf("checking queue...")
 				job, err := w.queue.Dequeue()
-				if job.Id == "" {
-					log.Debugf("dequeue timeout, sleeping...")
+				if err != nil {
+					log.Errorf("dequeue error=%s, sleeping...", err.Error())
 					time.Sleep(5 * time.Second)
 					continue
 				}
-				if err != nil {
-					log.Errorf("dequeue error=%s, sleeping...", err.Error())
+				if job.Id == "" {
+					log.Debugf("dequeue timeout, sleeping...")
 					time.Sleep(5 * time.Second)
 					continue
 				}
@@ -103,7 +103,7 @@ func (w *Worker) processDeployJobGCE(job *queue.Job) (*JobResult, error) {
 	// TODO loop through hosts and request app-controld deploy
 	// TODO parallelize only up to the requested concurrency
 	// TODO return a job result w/ details as reported by app-controld (failed|succeeded)
-	log.Errorf("processDeployJobGCE not yet implemented job id=", job.Id)
+	log.Errorf("processDeployJobGCE not yet implemented job id=%s", job.Id)
 	return nil, nil
 }
 

@@ -28,7 +28,7 @@ func TestWorker(t *testing.T) {
 		Id:        "xyz",
 		Action:    "DEPLOY",
 		Principal: "example@arryved.com",
-		Request: queue.DeployJobRequest{
+		Request: &queue.DeployJobRequest{
 			Cluster: apiconfig.Cluster{
 				Id: apiconfig.ClusterId{
 					App:     "pay",

@@ -81,7 +81,7 @@ func ApplyDeployObject(kubeconfigPath string, deployment *v1.Deployment) error {
 	deploymentsGet, err := deploymentsClient.Get(context.TODO(), deployment.Name, metav1.GetOptions{})
 	log.Debugf("k8s result for deployments get=%v", deploymentsGet.ObjectMeta)
 	if err != nil {
-		log.Info("k8s deployments get returned an error, checking if it's bad; err=%s", err.Error())
+		log.Infof("k8s deployments get returned an error, checking if it's bad; err=%s", err.Error())
 		if strings.Contains(err.Error(), "not found") {
 			// Create
 			log.Infof("deployment doesn't exist yet; creating deployment name=%s", deployment.Name)

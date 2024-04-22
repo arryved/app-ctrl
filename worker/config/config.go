@@ -28,6 +28,9 @@ type Config struct {
 
 	// Config for work queue client
 	Queue apiconfig.QueueConfig `yaml:"queue"`
+
+	// Google Service Account Key Path
+	ServiceAccountKeyPath string `yaml:"serviceAccountKeyPath"`
 }
 
 func (c *Config) setDefaults() {
@@ -48,6 +51,9 @@ func (c *Config) setDefaults() {
 	}
 	if c.MaxJobThreads == 0 {
 		c.MaxJobThreads = 8
+	}
+	if c.ServiceAccountKeyPath == "" {
+		c.ServiceAccountKeyPath = "/usr/local/etc/app-control-api-svc-acct-key.json"
 	}
 	log.Debugf("config %v", c)
 }

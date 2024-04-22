@@ -1,5 +1,5 @@
 PACKAGE_NAME = app-control-worker
-VERSION      = 0.0.1
+VERSION      = 0.0.2
 
 .PHONY: app-control-worker-dist deps test coverage package clean
 
