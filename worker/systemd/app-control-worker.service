@@ -1,0 +1,11 @@
+[Unit]
+Description=app-control-worker
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/app-control-worker
+Restart=on-failure
+User=app-control
+
+[Install]
+WantedBy=multi-user.target
