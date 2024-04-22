@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"os"
 
 	log "github.com/sirupsen/logrus"
 
@@ -19,6 +20,7 @@ func main() {
 
 	log.Infof("using configPath=%s", *configPath)
 	cfg := config.Load(*configPath)
+	os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", cfg.ServiceAccountKeyPath)
 
 	// set log level
 	level, err := log.ParseLevel(cfg.LogLevel)

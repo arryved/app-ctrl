@@ -5,6 +5,7 @@ readTimeoutS: 5
 writeTimeoutS: 10
 
 kubeConfigPath: config/mock-kubeconfig.yaml
+serviceAccountKeyPath: ../../secrets/service-acct-key.json
 
 queue:
   project: arryved-177921
