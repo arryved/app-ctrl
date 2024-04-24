@@ -7,6 +7,7 @@ from appcontrol.deploy import deploy
 
 
 @click.group()
+@click.version_option(package_name='app-control')
 def cli():
     pass
 
