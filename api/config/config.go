@@ -33,6 +33,9 @@ type Config struct {
 	// TLS Settings
 	TLS *TLSConfig `yaml:"tls"`
 
+	// Service Account Key file
+	ServiceAccountKeyPath string `yaml:"serviceAccountKeyPath"`
+
 	// Layout of the app clusters TODO - (statically configured for now, add discovery later)
 	Topology Topology `yaml:"topology"`
 
@@ -117,6 +120,9 @@ func (c *Config) setDefaults() {
 	}
 	if c.LogLevel == "" {
 		c.LogLevel = "info"
+	}
+	if c.ServiceAccountKeyPath == "" {
+		c.ServiceAccountKeyPath = "/usr/local/etc/app-control-api-svc-acct-key.json"
 	}
 	if c.TLS == nil {
 		c.TLS = &TLSConfig{
