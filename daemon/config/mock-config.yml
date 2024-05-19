@@ -1,7 +1,8 @@
 # This config is used for testing; keep real config in ansible
 ---
 logLevel: debug
-pollIntervalSec: 5
+convergeTimeoutS: 10
+pollIntervalS: 5
 readTimeoutS: 30
 writeTimeoutS: 10
 

@@ -1,5 +1,5 @@
 PACKAGE_NAME = app-controld
-VERSION      = 0.1.4
+VERSION      = 2.0.0
 
 .PHONY: app-control-dist deploy deps test coverage package clean
 

@@ -157,7 +157,7 @@ func Deploy(cfg *config.Config, statusCache *model.StatusCache, deployCache *mod
 
 	// error on time out based a configured converge interval (ideally less than deploy timeout)
 	// confirm from statusCache that install+running statuses converged on requested version
-	converged := waitForConverge(statusCache, app, version, time.Duration(cfg.ConvergeTimeoutSec)*time.Second)
+	converged := waitForConverge(statusCache, app, version, time.Duration(cfg.ConvergeTimeoutS)*time.Second)
 
 	// if convergence failure after deploy, 408
 	convergenceMsg := getConvergenceMsg(statusCache, app, version)

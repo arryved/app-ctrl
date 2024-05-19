@@ -32,13 +32,13 @@ type Config struct {
 	LogLevel string `yaml:"logLevel"`
 
 	// Status polling pause interval
-	PollIntervalSec int `yaml:"pollIntervalSec"`
+	PollIntervalS int `yaml:"pollIntervalS"`
 
 	// Batch deploy pause interval
-	DeployIntervalSec int `yaml:"deployIntervalSec"`
+	DeployIntervalS int `yaml:"deployIntervalS"`
 
 	// Deploy converge on timeout
-	ConvergeTimeoutSec int `yaml:"ConvergeTimeoutSec"`
+	ConvergeTimeoutS int `yaml:"convergeTimeoutS"`
 
 	// TLS Settings
 	TLS *common.TLSConfig `yaml:"tls"`
@@ -166,14 +166,14 @@ func (c *Config) setDefaults() {
 	if c.LogLevel == "" {
 		c.LogLevel = "info"
 	}
-	if c.PollIntervalSec == 0 {
-		c.PollIntervalSec = 5
+	if c.PollIntervalS == 0 {
+		c.PollIntervalS = 5
 	}
-	if c.DeployIntervalSec == 0 {
-		c.DeployIntervalSec = 15
+	if c.DeployIntervalS == 0 {
+		c.DeployIntervalS = 15
 	}
-	if c.ConvergeTimeoutSec == 0 {
-		c.ConvergeTimeoutSec = 5
+	if c.ConvergeTimeoutS == 0 {
+		c.ConvergeTimeoutS = 5
 	}
 	if c.TLS == nil {
 		c.TLS = &common.TLSConfig{
