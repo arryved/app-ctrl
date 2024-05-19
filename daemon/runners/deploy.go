@@ -14,8 +14,8 @@ import (
 func DeployRunner(cfg *config.Config, cache *model.DeployCache, executor *cli.Executor) {
 	for {
 		// insert pause to prevent hard busy-wait
-		log.Debugf("Deploy runner going to sleep for %d seconds", cfg.DeployIntervalSec)
-		time.Sleep(time.Duration(cfg.DeployIntervalSec) * time.Second)
+		log.Debugf("Deploy runner going to sleep for %d seconds", cfg.DeployIntervalS)
+		time.Sleep(time.Duration(cfg.DeployIntervalS) * time.Second)
 
 		// clean the cache of stale deploys
 		log.Debug("Clean stale deploys")
@@ -52,7 +52,7 @@ func DeployRunner(cfg *config.Config, cache *model.DeployCache, executor *cli.Ex
 		// NOTE: because these can be batched, a failure in apt install or restart will cause the
 		//       whole batch to fail. This is probably not a big deal since it's just one machine,
 		//       and it generally can only happen on non-prod envs where there are multiple apps
-		//       per machine. If batching is causing problems, reduce cfg.DeployIntervalSec and/or
+		//       per machine. If batching is causing problems, reduce cfg.DeployIntervalS and/or
 		//       add splay when kicking off multiple app deployments.
 		log.Infof("Deploying the latest desired app=version set=%v", aptTargets)
 		err := aptInstallAndRestart(aptTargets, executor)
