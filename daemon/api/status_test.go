@@ -25,7 +25,6 @@ func TestStatusHandler(t *testing.T) {
 	cfg.AptPath = "./test_objects/mock_apt"
 	cfg.AppDefs["arryved-api"].Varz.Port = varzPort
 
-	// stub channel to configure the handler with
 	// handler will be the object under test
 	cache := model.NewStatusCache()
 	handler := http.HandlerFunc(NewConfiguredHandlerStatus(cfg, cache))
