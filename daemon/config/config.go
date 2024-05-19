@@ -34,6 +34,12 @@ type Config struct {
 	// Status polling pause interval
 	PollIntervalSec int `yaml:"pollIntervalSec"`
 
+	// Batch deploy pause interval
+	DeployIntervalSec int `yaml:"deployIntervalSec"`
+
+	// Deploy converge on timeout
+	ConvergeTimeoutSec int `yaml:"ConvergeTimeoutSec"`
+
 	// TLS Settings
 	TLS *common.TLSConfig `yaml:"tls"`
 }
@@ -162,6 +168,12 @@ func (c *Config) setDefaults() {
 	}
 	if c.PollIntervalSec == 0 {
 		c.PollIntervalSec = 5
+	}
+	if c.DeployIntervalSec == 0 {
+		c.DeployIntervalSec = 15
+	}
+	if c.ConvergeTimeoutSec == 0 {
+		c.ConvergeTimeoutSec = 5
 	}
 	if c.TLS == nil {
 		c.TLS = &common.TLSConfig{

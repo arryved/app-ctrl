@@ -2,8 +2,6 @@ package runners
 
 import (
 	"bufio"
-	"fmt"
-	"os"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -15,8 +13,6 @@ import (
 	"github.com/arryved/app-ctrl/daemon/model"
 	"github.com/arryved/app-ctrl/daemon/varz"
 )
-
-const oorFilename = ".oor"
 
 func StatusRunner(cfg *config.Config, cache *model.StatusCache) {
 	for {
@@ -102,39 +98,6 @@ func runHealthChecks(appDef config.AppDef) []model.HealthResult {
 		results = append(results, result)
 	}
 	return results
-}
-
-func isOOR(appDef config.AppDef) bool {
-	root := appDef.AppRoot
-	path := fmt.Sprintf("%s/%s", root, oorFilename)
-	_, err := os.Stat(path)
-	if os.IsNotExist(err) {
-		return false
-	}
-	return true
-}
-
-func SetOOR(appDef config.AppDef) error {
-	root := appDef.AppRoot
-	path := fmt.Sprintf("%s/%s", root, oorFilename)
-	file, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	return nil
-}
-
-func UnsetOOR(appDef config.AppDef) error {
-	root := appDef.AppRoot
-	path := fmt.Sprintf("%s/%s", root, oorFilename)
-	err := os.Remove(path)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func getInstalledVersions(cfg *config.Config) (map[string]model.Version, error) {

@@ -16,6 +16,7 @@ import (
 type Api struct {
 	cfg         *config.Config
 	StatusCache *model.StatusCache
+	DeployCache *model.DeployCache
 }
 
 func (a *Api) Start() error {
@@ -23,6 +24,7 @@ func (a *Api) Start() error {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/status", NewConfiguredHandlerStatus(cfg, a.StatusCache))
+	mux.HandleFunc("/deploy", NewConfiguredHandlerDeploy(cfg, a.StatusCache, a.DeployCache))
 	mux.HandleFunc("/healthz", NewConfiguredHandlerHealthz(cfg, a.StatusCache))
 
 	tlsConfig := &tls.Config{
@@ -52,10 +54,11 @@ func (a *Api) Start() error {
 	return err
 }
 
-func New(cfg *config.Config, cache *model.StatusCache) *Api {
+func New(cfg *config.Config, statusCache *model.StatusCache, deployCache *model.DeployCache) *Api {
 	api := &Api{
 		cfg:         cfg,
-		StatusCache: cache,
+		StatusCache: statusCache,
+		DeployCache: deployCache,
 	}
 	return api
 }

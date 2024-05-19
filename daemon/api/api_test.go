@@ -20,8 +20,9 @@ func TestNew(t *testing.T) {
 	assert := assert.New(t)
 
 	cfg := config.Load("../config/mock-config.yml")
-	cache := model.NewStatusCache()
-	api := New(cfg, cache)
+	statusCache := model.NewStatusCache()
+	deployCache := model.NewDeployCache()
+	api := New(cfg, statusCache, deployCache)
 
 	assert.Equal(cfg, api.cfg)
 }
@@ -34,9 +35,10 @@ func TestStart(t *testing.T) {
 	varDir := path.Join(cwd, "../var")
 	cfg.CrtPath = path.Join(varDir, "service.crt")
 	cfg.KeyPath = path.Join(varDir, "service.key")
-	cache := model.NewStatusCache()
+	statusCache := model.NewStatusCache()
+	deployCache := model.NewDeployCache()
+	api := New(cfg, statusCache, deployCache)
 
-	api := New(cfg, cache)
 	go api.Start()
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	resp, err := http.Get(fmt.Sprintf("https://localhost:%d/", cfg.Port))
