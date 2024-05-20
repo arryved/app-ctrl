@@ -23,12 +23,14 @@ import (
 	apiconfig "github.com/arryved/app-ctrl/api/config"
 	"github.com/arryved/app-ctrl/api/queue"
 	"github.com/arryved/app-ctrl/worker/config"
+	"github.com/arryved/app-ctrl/worker/gce"
 	"github.com/arryved/app-ctrl/worker/gke"
 )
 
 type Worker struct {
-	cfg   *config.Config
-	queue *queue.Queue
+	cfg     *config.Config
+	queue   *queue.Queue
+	compute *gce.Client
 }
 
 type JobResult struct {
@@ -97,14 +99,6 @@ func (w *Worker) processDeployJob(job *queue.Job) (*JobResult, error) {
 		err := fmt.Errorf("unsupported runtime=%s for job id=%s", runtime, job.Id)
 		return nil, err
 	}
-}
-
-func (w *Worker) processDeployJobGCE(job *queue.Job) (*JobResult, error) {
-	// TODO loop through hosts and request app-controld deploy
-	// TODO parallelize only up to the requested concurrency
-	// TODO return a job result w/ details as reported by app-controld (failed|succeeded)
-	log.Errorf("processDeployJobGCE not yet implemented job id=%s", job.Id)
-	return nil, nil
 }
 
 func (w *Worker) getConfigBall(cluster apiconfig.Cluster, version string) ([]byte, error) {
@@ -338,6 +332,28 @@ func (w *Worker) processDeployJobGKE(job *queue.Job) (*JobResult, error) {
 	}
 	log.Infof("job id=%s processed with result=%v", job.Id, result)
 	return &result, nil
+}
+
+func (w *Worker) processDeployJobGCE(job *queue.Job) (*JobResult, error) {
+	log.Infof("processing job id=%s as GCE deploy")
+	result := JobResult{
+		ActionStatus:  "INCOMPLETE",
+		ClusterStatus: "UNKNOWN",
+		Detail:        "",
+	}
+	request := job.Request.(*queue.DeployJobRequest)
+
+	// loop through hosts and request app-controld deploy
+	w.getGCEHostsForApp(request.Cluster.Id)
+
+	// TODO parallelize only up to the requested concurrency
+	// TODO return a job result w/ details as reported by app-controld (failed|succeeded)
+	log.Errorf("processDeployJobGCE not yet implemented job id=%s result=%v, request=%s", job.Id, result, request)
+	return nil, nil
+}
+
+func (w *Worker) getGCEHostsForApp(id apiconfig.ClusterId) {
+	log.Infof("Id=%v", id)
 }
 
 func New(cfg *config.Config, jobQueue *queue.Queue) *Worker {
