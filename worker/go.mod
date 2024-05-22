@@ -6,7 +6,7 @@ require (
 	cloud.google.com/go/storage v1.40.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.9.0
-	github.com/arryved/app-ctrl/api v0.0.0-20240417061500-e4b3bee314a3
+	github.com/arryved/app-ctrl/api v0.0.0-20240429155141-1dedccf13318
 	google.golang.org/api v0.174.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.30.0

@@ -335,31 +335,39 @@ func (w *Worker) processDeployJobGKE(job *queue.Job) (*JobResult, error) {
 }
 
 func (w *Worker) processDeployJobGCE(job *queue.Job) (*JobResult, error) {
-	log.Infof("processing job id=%s as GCE deploy")
+	log.Infof("processing job id=%s as GCE deploy", job.Id)
 	result := JobResult{
 		ActionStatus:  "INCOMPLETE",
 		ClusterStatus: "UNKNOWN",
 		Detail:        "",
 	}
 	request := job.Request.(*queue.DeployJobRequest)
+	app := request.Cluster.Id.App
+	variant := request.Cluster.Id.Variant
 
-	// loop through hosts and request app-controld deploy
-	w.getGCEHostsForApp(request.Cluster.Id)
+	// get all instances for cluster
+	instanceMap, err := w.compute.GetInstancesForCluster(app, variant)
+	if err != nil {
+		msg := fmt.Sprintf("Unexpected error when looking for target instances app=%s, variant=%s", app, variant)
+		log.Error(msg)
+		result.Detail = msg
+		return &result, fmt.Errorf(msg)
+	}
+	log.Infof("Deployment with concurrency of %v requested against GCE instances=%v", request.Concurrency, instanceMap)
+
+	// request app-controld deploy
 
 	// TODO parallelize only up to the requested concurrency
 	// TODO return a job result w/ details as reported by app-controld (failed|succeeded)
-	log.Errorf("processDeployJobGCE not yet implemented job id=%s result=%v, request=%s", job.Id, result, request)
+	log.Errorf("processDeployJobGCE not yet implemented job id=%s result=%v, request=%v", job.Id, result, request)
 	return nil, nil
 }
 
-func (w *Worker) getGCEHostsForApp(id apiconfig.ClusterId) {
-	log.Infof("Id=%v", id)
-}
-
-func New(cfg *config.Config, jobQueue *queue.Queue) *Worker {
+func New(cfg *config.Config, jobQueue *queue.Queue, compute *gce.Client) *Worker {
 	worker := Worker{
-		cfg:   cfg,
-		queue: jobQueue,
+		cfg:     cfg,
+		compute: compute,
+		queue:   jobQueue,
 	}
 	return &worker
 }
