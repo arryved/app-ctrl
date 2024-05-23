@@ -12,6 +12,7 @@ $(VENV): pyproject.toml
 	python -m venv $(VENV)
 	pip install keyring keyrings.google-artifactregistry-auth
 	pip install -e .
+	pip install ".[tests]"
 
 deps: $(VENV)
 
