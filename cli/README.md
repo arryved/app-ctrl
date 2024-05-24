@@ -21,26 +21,29 @@ pip config set --user global.keyring-provider subprocess
 # [global]
 # extra-index-url = https://oauth2accesstoken@us-central1-python.pkg.dev/arryved-tools/python/simple/
 # keyring-provider = subprocess
-
-pipx install pipenv
-pipenv run pip install keyring keyrings.google-artifactregistry-auth
 ```
 
-### Development
+### Local Dev
 
 ```console
 cd app-control # if not in the directory already
 
-pipenv install # install dependencies from Pipfile; `app-control` is configured as an editable dependency
-pipenv shell # set up & activate virtual environment
-app-control [...] # run app-control from current (i.e. non-built) code
+make deps
+source venv/bin/activate
 ```
 
-## Build & Deploy
+### Test
+```bash
+make test
+```
 
-Make sure you increment the version number as necessary in `setup.py`!
+### Build
+```bash
+make build
+```
 
-```console
-make test # run tests & linter
-make release # build the wheel and push it up to the Artifact Repository
+### Release
+Make sure you increment semver in pyproject.toml, commit + push, then:
+```bash
+make release
 ```

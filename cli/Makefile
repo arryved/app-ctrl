@@ -1,18 +1,32 @@
-DIST_FILES = $(wildcard src/dist/*.whl src/dist/*.tar.gz)
+.PHONY: all deps test build distclean release
 
-deps: Pipfile
-	pipx install pipenv
-	pipenv run pip install keyring keyrings.google-artifactregistry-auth
+VERSION := $(shell sed -n 's/^version = "\(.*\)"/\1/p' pyproject.toml)
+WHEEL := dist/app_control-$(VERSION)-py3-none-any.whl
+TGZ := dist/app_control-$(VERSION).tar.gz
+VENV := venv
 
-wheel: distclean deps $(shell find src -type f -name "*.py")
-	(PIP_NO_INPUT=1 python3 -m build src)
+
+build: $(WHEEL) test
+
+$(VENV): pyproject.toml
+	python -m venv $(VENV)
+	pip install keyring keyrings.google-artifactregistry-auth
+	pip install -e .
+	pip install ".[tests]"
+
+deps: $(VENV)
+
+$(WHEEL): $(shell find src -type f -name "*.py")
+	PIP_NO_INPUT=1 python -m build
 
 distclean:
-	\rm -f $(DIST_FILES)
+	\rm -rf venv/
+	\rm -rf dist/
+	\mkdir dist/
 
-release: wheel
-	(gcloud config set project arryved-tools && gcloud config set artifacts/repository python && cd src; twine upload --skip-existing --repository-url https://oauth2accesstoken@us-central1-python.pkg.dev/arryved-tools/python/  dist/*)
+release: build
+	(gcloud config set project arryved-tools && gcloud config set artifacts/repository python && twine upload --skip-existing --repository-url https://oauth2accesstoken@us-central1-python.pkg.dev/arryved-tools/python/ $(WHEEL) $(TGZ))
 
-test: $(shell find src -type f -name "*.py")
+test: deps
 	flake8 src/
 	pytest test/
