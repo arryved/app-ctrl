@@ -22,17 +22,16 @@ class TestConfig():
                 {"a": "e", "b": "e", "c": "e", "d": "e"},             # e = environment
                 {"a": "r", "b": "r", "c": "r"},                       # r = region
                 {"a": "v", "b": "v"},                                 # v = variant
-                {"a": "h"},                                           # h = host
         ]
         with tempfile.TemporaryDirectory() as temp_dir:
-            result = merge_config(temp_dir, ("test-env", "test-region", "test-variant", "test-host"))
-            assert result == {"a": "h", "b": "v", "c": "r", "d": "e", "e": "d"}
+            result = merge_config(temp_dir, ("test-env", "test-region", "test-variant"))
+            assert result == {"a": "v", "b": "v", "c": "r", "d": "e", "e": "d"}
 
     def test_generate_files_from_config(self):
-        # test that files key and control.py references resolve:
+        # test that files key and control references resolve:
         # 1) extracted from the config (if contents included)
         # 2) copied from the repo dir (if contents absent)
-        # 3) control.py copied over
+        # 3) control copied over
         example_config = {
                 "files": {
                     "path1": None,
@@ -43,12 +42,12 @@ class TestConfig():
             os.chdir(mock_app_dir)
             # create path1 file with some contents
             open(f"{mock_app_dir}/path1", "w").write("some example file contents in path1")
-            open(f"{mock_app_dir}/control.py", "w").write("example control script")
+            open(f"{mock_app_dir}/control", "w").write("example control script")
             with tempfile.TemporaryDirectory() as temp_dir:
-                generate_files_from_config(example_config, ("test-env", "test-region", "test-variant", "test-host"), mock_app_dir, temp_dir)
+                generate_files_from_config(("test-env", "test-region", "test-variant"), mock_app_dir, temp_dir)
                 assert open(f"{temp_dir}/path1", "r").read() == "some example file contents in path1"
                 assert open(f"{temp_dir}/path2", "r").read() == "some example file contents in path2"
-                assert open(f"{temp_dir}/control.py", "r").read() == "example control script"
+                assert open(f"{temp_dir}/control", "r").read() == "example control script"
 
     def test_create_tarball(self):
         with tempfile.TemporaryDirectory() as mock_app_dir:

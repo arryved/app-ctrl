@@ -13,7 +13,7 @@ import tempfile
 import warnings
 import yaml
 
-from deepmerge import always_merger
+from deepmerge import Merger
 from google.cloud import storage
 from urllib.parse import quote, unquote
 
@@ -22,6 +22,40 @@ from appcontrol.common import constants, working_directory
 
 warnings.filterwarnings("ignore")
 APP_ROOT = os.environ.get("APP_ROOT", ".")
+DELETE_MARKER = object()
+
+
+def _delete_marker_constructor(loader, node):
+    return DELETE_MARKER
+
+yaml.SafeLoader.add_constructor('!DELETE', _delete_marker_constructor)
+
+def _custom_override_with_dupe_warning(config, path, base, override):
+    if isinstance(base, dict) and isinstance(override, dict):
+        # override while checking for dupes
+        for key, value in override.items():
+            if key in base:
+                if base[key] == value:
+                    click.echo(click.style(f"warning: '{key}' in override has the same value in base and override: {value}", fg="yellow"), err=True)
+                if value is DELETE_MARKER:
+                    del base[key]
+                else:
+                    base[key] = _custom_override_with_dupe_warning(config, path + [str(key)], base[key], value)
+            else:
+                if value is not DELETE_MARKER:
+                    base[key] = value
+
+        return base
+    else:
+        return override
+
+
+def _override_merger():
+    return Merger(
+        [(dict, _custom_override_with_dupe_warning)],
+        ["override"],
+        ["override"],
+    )
 
 
 def _copy_file(source_path, target_path):
@@ -59,42 +93,127 @@ def _make_subdirs(paths, temp_dir):
         os.makedirs(dir_name, exist_ok=True)
 
 
-def merge_config(directory, config_spec):
-    """ merge the config per precedence rules for the requested (env, region, variant, host)
+def decode_version_metadata(filename):
+    """
+    decodes bundle/tag metadate back into a metadata map
+    """
+    pairs = filename.split(",")
+    metadata_map = {}
+    for pair in pairs:
+        k, v = pair.split("=")
+        metadata_map[k] = unquote(v)
+    return metadata_map
+
+
+def merge_config(directory, config_spec) -> dict:
+    """ merge the config per precedence rules for the requested (env, region, variant)
         - defaults
         - env/[environment].yaml (if specified)
         - region/[region].yaml (if specified)
         - variant/[variant].yaml (if specified)
-        - host/[host].yaml (if specified)
     """
-    environment, region, variant, host = config_spec
+    environment, region, variant = config_spec
     directory = f"{directory}/config"
 
     # load defaults first
     result = _load_config_file(f"{directory}/defaults.yaml")
     # merge environment
     if environment:
-        result = always_merger.merge(result, _load_config_file(f"{directory}/env/{environment}.yaml"))
+        result = _override_merger().merge(result, _load_config_file(f"{directory}/env/{environment}.yaml"))
     # merge region
     if region:
-        result = always_merger.merge(result, _load_config_file(f"{directory}/region/{region}.yaml"))
+        result = _override_merger().merge(result, _load_config_file(f"{directory}/region/{region}.yaml"))
     # merge variant
     if variant:
-        result = always_merger.merge(result, _load_config_file(f"{directory}/variant/{variant}.yaml"))
-    # merge host
-    if host:
-        result = always_merger.merge(result, _load_config_file(f"{directory}/host/{host}.yaml"))
+        result = _override_merger().merge(result, _load_config_file(f"{directory}/variant/{variant}.yaml"))
     return result
 
 
-def generate_files_from_config(config, config_spec, directory, temp_dir):
-    """ generate any files whose contents are in the config, including
-        any embedded files; verifies on-disk files are present
+def _get_all_file_refs_from_configs(directory):
+    """ walk through all yamls and get file refs (those with keys but no values) """
+    files = {}
+    for root, dirs, config_files in os.walk(directory):
+        for file in config_files:
+            if file.endswith(".yaml"):
+                # Get the full path of the file
+                file_path = os.path.join(root, file)
+                # Open the file and load the yaml data
+                cfg = _load_config_file(file_path)
+                # Get the path keys in the "files" object and add them to the list if they have no inlined value
+                cfg_files = cfg.get("files", {})
+                for path, value in cfg_files.items():
+                    if not value:
+                        files[path] = value
+    return files
+
+
+#################################################################
+# TODO DRY - this is copypasty push this helper into arpy-config
+#
+def build_jvm_args_non_standard_unstable_list(args):
+    result = []
+    for k, v in args.items():
+        arg = f"-XX:{k}={v}"
+        if type(v) is bool:
+            sign = "+" if v else "-"
+            arg = f"-XX:{sign}{k}"
+        result.append(arg)
+    return result
+
+
+def build_jvm_args_non_standard_list(args):
+    result = []
+    for k, v in args.items():
+        arg = f"-X{k}{v}"
+        result.append(arg)
+    return result
+
+
+def build_jvm_args_properties_list(args):
+    result = []
+    for k, v in args.items():
+        arg = f"-D{k}={v}"
+        result.append(arg)
+    return result
+
+def _simulate_java_cmd(cfg):
+    # TODO DRY - this is copypasty push this helper into arpy-config
+    java_cfg = cfg["java"]
+
+    jvm_args_app = java_cfg.get("jvm_args_app", {})
+    jvm_args_app_list = [f"--{k} {v}" for k, v in jvm_args_app.items()]
+
+    jvm_args_non_standard = java_cfg.get("jvm_args_non_standard", {})
+    jvm_args_non_standard_list = build_jvm_args_non_standard_list(jvm_args_non_standard)
+
+    jvm_args_non_standard_unstable = java_cfg.get("jvm_args_non_standard_unstable", {})
+    jvm_args_non_standard_unstable_list = build_jvm_args_non_standard_unstable_list(jvm_args_non_standard_unstable)
+
+    jvm_args_properties = java_cfg.get("jvm_args_properties", {})
+    jvm_args_properties_list = build_jvm_args_properties_list(jvm_args_properties)
+
+    jvm_args_non_standard = " ".join(jvm_args_non_standard_list + jvm_args_non_standard_unstable_list)
+    jvm_args_properties =  " ".join(jvm_args_properties_list)
+    jvm_args_app = " ".join(jvm_args_app_list)
+    jar = java_cfg["jar"]
+    cmd = f"java {jvm_args_non_standard} {jvm_args_properties} -server -cp config -jar {jar} {jvm_args_app}"
+    return cmd
+#
+#################################################################
+
+
+def generate_files_from_config(config_spec, directory, temp_dir):
+    """ tar up the files needed for config, including any embedded files;
+        verifies on-disk files are present
     """
-    files = config.get("files", {})
+    # get *all* files referenced by any config file
+    files = _get_all_file_refs_from_configs(directory)
 
     # for all files under the files key, create required subdirs in temp_dir
     _make_subdirs(files.keys(), temp_dir)
+
+    # copy the control file
+    _copy_file(f"{directory}/control", f"{temp_dir}/control")
 
     for path, contents in config.get("files", {}).items():
         file_exists_readable = os.path.exists(path) and os.path.isfile(path) and os.access(path, os.R_OK)
@@ -106,7 +225,7 @@ def generate_files_from_config(config, config_spec, directory, temp_dir):
             click.echo(click.style(f"dumping file at {path}", fg="blue"))
             if file_exists_readable:
                 # warn if a file is being overridden
-                click.echo(click.style(f"warning: content in config is taking precedence over existing file at {path}", fg="yellow"), err=True)
+                click.echo(click.style(f"warning: content in config is taking precedence over existing file at {path}", fg="blue"), err=True)
         else:
             # when value absent, verify that file exists on disk, and fail if it doesn't
             if not file_exists_readable:
@@ -117,18 +236,11 @@ def generate_files_from_config(config, config_spec, directory, temp_dir):
             click.echo(click.style(f"copying file at {path}", fg="blue"))
             _copy_file(path, temp_path)
 
-        # copy the control file as well
-        _copy_file(f"{directory}/control.py", f"{temp_dir}/control.py")
 
-    # dump merged config file as config.yaml for bundling
-    path = f"{temp_dir}/config.yaml"
-    _dump_config_file(config, path)
-
-
-def create_tarball(version_metadata, temp_dir):
+def create_tarball(object_name, temp_dir):
     # create an archive to add all the temp_dir files, tagged to the config_spec & version/hash
     with working_directory(temp_dir) as cwd_relative:
-        tarfile_path = f"{temp_dir}/config-{version_metadata}.tar.gz"
+        tarfile_path = f"{temp_dir}/{object_name}.tar.gz"
         with tarfile.open(tarfile_path, "w:gz") as tar:
             # recursively list all files in tree
             for dirpath, dirnames, filenames in os.walk(cwd_relative):
@@ -166,34 +278,6 @@ def encode_version_metadata(metadata_map):
     return filename
 
 
-def decode_version_metadata(filename):
-    """
-    decodes bundle/tag metadate back into a metadata map
-    """
-    pairs = filename.split(",")
-    metadata_map = {}
-    for pair in pairs:
-        k, v = pair.split("=")
-        metadata_map[k] = unquote(v)
-    return metadata_map
-
-
-def _generate_version_metadata(config_spec, config_map):
-    environment, region, host, variant = config_spec
-    app = config_map["name"]
-    version = ".".join([e for e in config_map["version"].split(".") if e != "*"])
-    githash = _git_hash()
-    return encode_version_metadata({
-        "app": app,
-        "environment": environment,
-        "hash": githash,
-        "host": host,
-        "region": region,
-        "variant": variant,
-        "version": version,
-    })
-
-
 def push_config_artifact(storage_client, source_path):
     repo_name = constants["repo_name"]
     bucket = storage_client.bucket(repo_name)
@@ -212,21 +296,40 @@ def push_config_artifact(storage_client, source_path):
 @click.command()
 @click.option('-e', '--environment', required=False, default=None)
 @click.option('-r', '--region', required=False, default=None)
-@click.option('-v', '--variant', required=False, default=None)
-@click.option('-h', '--host', required=False, default=None)
-def config(environment, region, variant, host):
-    click.echo(click.style(f"Building config for environment={environment},region={region},variant={variant},host={host}...", fg="green"))
+@click.option('-t', '--variant', required=False, default=None)
+@click.option('-v', '--version', required=True)
+@click.option('-c', '--compile', is_flag=True, required=False, default=False)
+def config(environment, region, variant, version, compile):
+    click.echo(click.style(f"Checking config for environment={environment},region={region},variant={variant},version={version}...", fg="green"))
     arryved_dir = "./.arryved"
-    config_spec = (environment, region, variant, host)
+    cfg_default = _load_config_file(f"{arryved_dir}/config/defaults.yaml")
+    app_name = cfg_default["name"]
+    git_hash = _git_hash()
+    object_name = f"config-app={app_name},hash={git_hash},version={version}"
 
     with click_spinner.spinner():
         try:
+            click.echo(click.style(f"Building config object {object_name}", fg="green"))
+            config_spec = (environment, region, variant)
             merged = merge_config(arryved_dir, config_spec)
-            version_metadata = _generate_version_metadata(config_spec, merged)
-            with tempfile.TemporaryDirectory() as temp_dir:
-                generate_files_from_config(merged, config_spec, arryved_dir, temp_dir)
-                tarball_path = create_tarball(version_metadata, temp_dir)
-                push_config_artifact(storage.Client(), tarball_path)
+
+            # allow merged cfg debugging, and validation of specific configs
+            # may pull this out in favor of another tool later when/if it makes sense
+            if compile:
+                merged_path = f"{arryved_dir}/config/config-environment={environment},region={region},variant={variant},version={version}.yaml"
+                _dump_config_file(merged, merged_path)
+                click.echo(click.style(f"Dumped config object {object_name} to {merged_path}", fg="blue"))
+                if merged.get("java"):
+                    click.echo(click.style(f"Simulating java cmd for {object_name}", fg="blue"))
+                    cmd = _simulate_java_cmd(merged)
+                    print(cmd)
+
+            else:
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    generate_files_from_config(config_spec, arryved_dir, temp_dir)
+                    tarball_path = create_tarball(object_name, temp_dir)
+                    push_config_artifact(storage.Client(), tarball_path)
+
         except Exception as e:
             click.echo(click.style(f"Server experienced an error: {e}", fg="red"), err=True)
             exit(1)
