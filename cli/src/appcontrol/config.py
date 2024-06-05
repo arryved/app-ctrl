@@ -11,6 +11,7 @@ import subprocess
 import tarfile
 import tempfile
 import warnings
+import shutil
 import yaml
 
 from deepmerge import Merger
@@ -206,16 +207,14 @@ def generate_files_from_config(config_spec, directory, temp_dir):
     """ tar up the files needed for config, including any embedded files;
         verifies on-disk files are present
     """
-    # get *all* files referenced by any config file
+    # copy the control file
+    _copy_file(f"{directory}/control", f"{temp_dir}/control")
     files = _get_all_file_refs_from_configs(directory)
 
     # for all files under the files key, create required subdirs in temp_dir
     _make_subdirs(files.keys(), temp_dir)
 
-    # copy the control file
-    _copy_file(f"{directory}/control", f"{temp_dir}/control")
-
-    for path, contents in config.get("files", {}).items():
+    for path, contents in files.items():
         file_exists_readable = os.path.exists(path) and os.path.isfile(path) and os.access(path, os.R_OK)
         temp_path = f"{temp_dir}/{path}"
 
@@ -242,12 +241,7 @@ def create_tarball(object_name, temp_dir):
     with working_directory(temp_dir) as cwd_relative:
         tarfile_path = f"{temp_dir}/{object_name}.tar.gz"
         with tarfile.open(tarfile_path, "w:gz") as tar:
-            # recursively list all files in tree
-            for dirpath, dirnames, filenames in os.walk(cwd_relative):
-                for filename in filenames:
-                    full_path = os.path.join(dirpath, filename)
-                    # add to archive
-                    tar.add(full_path)
+            tar.add("./")
             tar.close()
             return tarfile_path
 
@@ -293,6 +287,20 @@ def push_config_artifact(storage_client, source_path):
     click.echo(click.style(f"Config bundle {file_name} uploaded to repo bucket={repo_name}", fg="green"))
 
 
+def copy_tree(src, dst):
+    """
+    recursively copy a directory tree from src to dst
+    """
+    try:
+        shutil.copytree(src, dst)
+    except OSError as e:
+        # If the error was caused by the source directory being the same as the destination directory, ignore it
+        if e.errno == shutil.errno.ENOTEMPTY:
+            pass
+        else:
+            raise
+
+
 @click.command()
 @click.option('-e', '--environment', required=False, default=None)
 @click.option('-r', '--region', required=False, default=None)
@@ -325,11 +333,12 @@ def config(environment, region, variant, version, compile):
                     print(cmd)
 
             else:
+                click.echo(click.style(f"Pushing config object {object_name} to repo", fg="blue"))
                 with tempfile.TemporaryDirectory() as temp_dir:
                     generate_files_from_config(config_spec, arryved_dir, temp_dir)
+                    copy_tree(f"{arryved_dir}/config", f"{temp_dir}/config")
                     tarball_path = create_tarball(object_name, temp_dir)
                     push_config_artifact(storage.Client(), tarball_path)
-
         except Exception as e:
             click.echo(click.style(f"Server experienced an error: {e}", fg="red"), err=True)
             exit(1)
