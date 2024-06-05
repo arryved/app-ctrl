@@ -1,6 +1,7 @@
 package product
 
 import (
+	yaml "gopkg.in/yaml.v3"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -171,4 +172,32 @@ files:
 	assert.Equal("variant", merged.Other["env"].Value.(map[string]Schemaless)["v"].Value)
 	assert.Equal("variant", merged.Other["files"].Value.(map[string]Schemaless)["config/v"].Value)
 	assert.NotContains(merged.Other["app"].Value.(map[string]Schemaless), "deleteme")
+
+	yamlText, err := yaml.Marshal(merged)
+	assert.NoError(err)
+	expected := `name: my-cool-app
+version: 0.0.*
+control: ""
+port: 8080
+kind: online
+runtime: GKE
+repo_type: container
+repo_name: arryved-product
+app:
+    d: default
+    e: env
+    r: region
+    v: variant
+env:
+    d: default
+    e: env
+    r: region
+    v: variant
+files:
+    config/d: default
+    config/e: env
+    config/r: region
+    config/v: variant
+`
+	assert.Equal(expected, string(yamlText))
 }

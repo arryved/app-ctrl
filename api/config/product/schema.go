@@ -39,6 +39,37 @@ type Schemaless struct {
 	Value interface{}
 }
 
+func (s Schemaless) MarshalYAML() (interface{}, error) {
+	return marshalWithoutValueKey(s.Value)
+}
+
+func marshalWithoutValueKey(value interface{}) (interface{}, error) {
+	switch v := value.(type) {
+	case map[string]interface{}:
+		result := make(map[string]interface{})
+		for key, val := range v {
+			marshaledVal, err := marshalWithoutValueKey(val)
+			if err != nil {
+				return nil, err
+			}
+			result[key] = marshaledVal
+		}
+		return result, nil
+	case []interface{}:
+		var result []interface{}
+		for _, val := range v {
+			marshaledVal, err := marshalWithoutValueKey(val)
+			if err != nil {
+				return nil, err
+			}
+			result = append(result, marshaledVal)
+		}
+		return result, nil
+	default:
+		return v, nil
+	}
+}
+
 func (s *Schemaless) UnmarshalYAML(value *yaml.Node) error {
 	// pass deletion tag to value, so it can be deleted post-merge
 	if value.Tag == "!DELETE" {
