@@ -114,6 +114,7 @@ type AppConfig struct {
 	Version  string                 `yaml:"version"`
 	Control  string                 `yaml:"control"`
 	Port     *int                   `yaml:"port,omitempty"`
+	Scheme   string                 `yaml:"scheme,omitempty"`
 	Kind     Kind                   `yaml:"kind"`
 	Runtime  Runtime                `yaml:"runtime"`
 	RepoType Repo                   `yaml:"repo_type,omitempty"`
