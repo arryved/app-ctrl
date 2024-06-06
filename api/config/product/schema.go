@@ -239,7 +239,7 @@ func mergeMaps(dst, src map[string]Schemaless) {
 func Merge(base *AppConfig, override AppConfig) error {
 	mergeMaps(base.Other, override.Other)
 	// Get rid of any keys with value !DELETE before merging;
-	// Use a second pass b/c mergo doesn't support target/base key deletion in transforms
+	// Use a second pass since no support for target/base key deletion
 	stripDeletedKeys(base.Other)
 	return nil
 }
