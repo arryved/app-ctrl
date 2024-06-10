@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "app-control"
-version = "2.2.2"
+version = "2.3.0"
 authors = [
   { name="Bill West", email="wwest@arryved.com" },
   { name="Jeremy Miller", email="jeremy@arryved.com" },

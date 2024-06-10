@@ -2,6 +2,8 @@ import os
 import pytest
 import re
 import tempfile
+import unittest
+import yaml
 
 from unittest.mock import patch, MagicMock as Mock
 from appcontrol.config import (
@@ -13,7 +15,7 @@ from appcontrol.config import (
         push_config_artifact,
 )
 
-class TestConfig():
+class TestConfig(unittest.TestCase):
     @patch('appcontrol.config._load_config_file')
     def test_merge_config(self, patched_load_config_file):
         # check that overrides work in the expected precedence order (least -> most)
@@ -40,14 +42,19 @@ class TestConfig():
         }
         with tempfile.TemporaryDirectory() as mock_app_dir:
             os.chdir(mock_app_dir)
+            os.mkdir(f"{mock_app_dir}/.arryved")
+            os.mkdir(f"{mock_app_dir}/.arryved/config")
+            # create defaults.yaml from example config
+            open(f"{mock_app_dir}/.arryved/config/defaults.yaml", "w").write(yaml.dump(example_config))
             # create path1 file with some contents
             open(f"{mock_app_dir}/path1", "w").write("some example file contents in path1")
-            open(f"{mock_app_dir}/control", "w").write("example control script")
+            open(f"{mock_app_dir}/.arryved/control", "w").write("example control script")
             with tempfile.TemporaryDirectory() as temp_dir:
-                generate_files_from_config(("test-env", "test-region", "test-variant"), mock_app_dir, temp_dir)
+                generate_files_from_config(mock_app_dir, temp_dir)
                 assert open(f"{temp_dir}/path1", "r").read() == "some example file contents in path1"
-                assert open(f"{temp_dir}/path2", "r").read() == "some example file contents in path2"
                 assert open(f"{temp_dir}/control", "r").read() == "example control script"
+                # this should not exist it gets added after runtime configuration merge
+                assert not os.path.exists("{temp_dir}/path2")
 
     def test_create_tarball(self):
         with tempfile.TemporaryDirectory() as mock_app_dir:
@@ -66,11 +73,8 @@ class TestConfig():
         }
 
         encoded = encode_version_metadata(example_version_metadata)
-
         assert encoded == "application=my-app,environment=my-environment,host=my-host,region=my-region,variant=my-variant,version=1.2.3"
-
         decoded = decode_version_metadata(encoded)
-
         assert decoded == example_version_metadata
 
 

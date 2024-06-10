@@ -29,7 +29,9 @@ DELETE_MARKER = object()
 def _delete_marker_constructor(loader, node):
     return DELETE_MARKER
 
+
 yaml.SafeLoader.add_constructor('!DELETE', _delete_marker_constructor)
+
 
 def _custom_override_with_dupe_warning(config, path, base, override):
     if isinstance(base, dict) and isinstance(override, dict):
@@ -130,10 +132,10 @@ def merge_config(directory, config_spec) -> dict:
     return result
 
 
-def _get_all_file_refs_from_configs(directory):
+def _get_all_file_refs_from_configs(config_dir):
     """ walk through all yamls and get file refs (those with keys but no values) """
     files = {}
-    for root, dirs, config_files in os.walk(directory):
+    for root, dirs, config_files in os.walk(config_dir):
         for file in config_files:
             if file.endswith(".yaml"):
                 # Get the full path of the file
@@ -177,6 +179,7 @@ def build_jvm_args_properties_list(args):
         result.append(arg)
     return result
 
+
 def _simulate_java_cmd(cfg):
     # TODO DRY - this is copypasty push this helper into arpy-config
     java_cfg = cfg["java"]
@@ -194,7 +197,7 @@ def _simulate_java_cmd(cfg):
     jvm_args_properties_list = build_jvm_args_properties_list(jvm_args_properties)
 
     jvm_args_non_standard = " ".join(jvm_args_non_standard_list + jvm_args_non_standard_unstable_list)
-    jvm_args_properties =  " ".join(jvm_args_properties_list)
+    jvm_args_properties = " ".join(jvm_args_properties_list)
     jvm_args_app = " ".join(jvm_args_app_list)
     jar = java_cfg["jar"]
     cmd = f"java {jvm_args_non_standard} {jvm_args_properties} -server -cp config -jar {jar} {jvm_args_app}"
@@ -203,13 +206,13 @@ def _simulate_java_cmd(cfg):
 #################################################################
 
 
-def generate_files_from_config(config_spec, directory, temp_dir):
+def generate_files_from_config(app_dir, temp_dir):
     """ tar up the files needed for config, including any embedded files;
         verifies on-disk files are present
     """
     # copy the control file
-    _copy_file(f"{directory}/control", f"{temp_dir}/control")
-    files = _get_all_file_refs_from_configs(directory)
+    _copy_file(f"{app_dir}/.arryved/control", f"{temp_dir}/control")
+    files = _get_all_file_refs_from_configs(f"{app_dir}/.arryved/config")
 
     # for all files under the files key, create required subdirs in temp_dir
     _make_subdirs(files.keys(), temp_dir)
@@ -238,7 +241,7 @@ def generate_files_from_config(config_spec, directory, temp_dir):
 
 def create_tarball(object_name, temp_dir):
     # create an archive to add all the temp_dir files, tagged to the config_spec & version/hash
-    with working_directory(temp_dir) as cwd_relative:
+    with working_directory(temp_dir):
         tarfile_path = f"{temp_dir}/{object_name}.tar.gz"
         with tarfile.open(tarfile_path, "w:gz") as tar:
             tar.add("./")

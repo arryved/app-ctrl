@@ -1,15 +1,16 @@
 import click
 import click_spinner
-import getpass
 import json
 import math
 import requests
 import warnings
 
 from appcontrol.common import constants
+from appcontrol.auth import token
 
 
 warnings.filterwarnings("ignore")
+
 
 @click.command()
 @click.option('-e', '--environment', required=True)
@@ -25,12 +26,14 @@ def deploy(environment, application, region, variant, version):
 
     with click_spinner.spinner():
         body = {
-                "principal": _principal(),
+                # "principal": "",  # deprecated, this can/should be pulled server-side from the validated token
                 "concurrency": "1",
                 "version": version,
         }
         # TODO - use CA cert
-        response = requests.post(url, json=body, verify=False)
+        id_token = token().get("id_token")
+        headers = {"Authorization": f"Bearer {id_token}"}
+        response = requests.post(url, json=body, headers=headers, verify=False)
 
     status_code = math.floor(response.status_code / 100)
     if status_code == 5:
@@ -40,9 +43,3 @@ def deploy(environment, application, region, variant, version):
 
     result = json.loads(response.text)
     print(result)
-
-
-def _principal():
-    # TODO implement auth instead
-    username = getpass.getuser()
-    return username
