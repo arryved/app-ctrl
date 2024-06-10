@@ -130,6 +130,22 @@ func handleMethodNotAllowed(w http.ResponseWriter, msg string) {
 	return
 }
 
+func handleForbidden(w http.ResponseWriter, msg string) {
+	httpStatus := http.StatusForbidden
+	errorBody := fmt.Sprintf("{\"error\": \"%s\"}", msg)
+	w.WriteHeader(httpStatus)
+	w.Write([]byte(errorBody))
+	return
+}
+
+func handleUnauthorized(w http.ResponseWriter, msg string) {
+	httpStatus := http.StatusUnauthorized
+	errorBody := fmt.Sprintf("{\"error\": \"%s\"}", msg)
+	w.WriteHeader(httpStatus)
+	w.Write([]byte(errorBody))
+	return
+}
+
 func extractQueryParams(r *http.Request) map[string]string {
 	params := make(map[string]string)
 
