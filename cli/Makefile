@@ -3,16 +3,16 @@
 VERSION := $(shell sed -n 's/^version = "\(.*\)"/\1/p' pyproject.toml)
 WHEEL := dist/app_control-$(VERSION)-py3-none-any.whl
 TGZ := dist/app_control-$(VERSION).tar.gz
-VENV := venv
+VENV := venv/pyvenv.cfg
 
 
 build: $(WHEEL) test
 
 $(VENV): pyproject.toml
-	python -m venv $(VENV)
-	pip install keyring keyrings.google-artifactregistry-auth
-	pip install -e .
-	pip install ".[tests]"
+	python -m venv venv/
+	. venv/bin/activate && pip install keyring keyrings.google-artifactregistry-auth
+	. venv/bin/activate && pip install -e .
+	. venv/bin/activate && pip install ".[tests]"
 
 deps: $(VENV)
 
