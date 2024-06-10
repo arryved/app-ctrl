@@ -41,7 +41,41 @@ type Config struct {
 
 	// Config for work queue client
 	Queue QueueConfig `yaml:"queue"`
+
+	// RBAC
+	AuthnEnabled    bool                        `yaml:"authnEnabled"`
+	RBACEnabled     bool                        `yaml:"rbacEnabled"`
+	RoleMemberships map[Role][]GroupUrn         `yaml:"roleMemberships"`
+	AccessEntries   []AccessEntry               `yaml:"accessEntries"`
+	UsersByGroups   map[GroupUrn][]PrincipalUrn `yaml:"usersByGroups"`
 }
+
+type GroupUrn string
+type ResourceUrn string
+type PrincipalUrn string
+
+type AccessEntry struct {
+	Role       Role        `yaml:"role"`
+	Permission Permission  `yaml:"permission"`
+	Target     ResourceUrn `yaml:"target"`
+}
+
+type Role string
+
+const (
+	Operator  Role = "operator"
+	Developer Role = "developer"
+	Manager   Role = "manager"
+)
+
+type Permission string
+
+const (
+	Deploy  Permission = "deploy"
+	Restart Permission = "restart"
+)
+
+type RoleMemberships map[Role][]string
 
 // map of environment to clusters
 type Topology map[string]Environment

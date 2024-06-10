@@ -1,5 +1,5 @@
 PACKAGE_NAME = app-control-api
-VERSION      = 2.2.0
+VERSION      = 2.3.0
 
 .PHONY: app-control-api-dist deps test coverage package clean
 

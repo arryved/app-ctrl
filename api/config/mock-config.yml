@@ -68,3 +68,38 @@ topology:
       kind: online
       runtime: GKE
       repo: product-docker
+
+rbacEnabled: false
+roleMemberships:
+  operator:
+    - urn:example:group:sre-team@example.com
+  developer:
+    - urn:example:group:dev-team@example.com
+  manager:
+    - urn:example:group:managers@example.com
+    - urn:example:group:cto-office@example.com
+
+accessEntries:
+  - role: operator
+    permission: deploy
+    target: "*"
+  - role: developer
+    permission: deploy
+    target: urn:example:app:app1
+  - role: manager
+    permission: deploy
+    target: urn:example:app:app1
+  - role: manager
+    permission: deploy
+    target: urn:example:app:app2
+
+# TODO get rid of this in favor of GWS lookups
+usersByGroups:
+  urn:example:group:sre-team@example.com:
+    - urn:example:user:alice.sre@example.com
+  urn:example:group:dev-team@example.com:
+    - urn:example:user:bob.dev@example.com
+  urn:example:group:managers@example.com:
+    - urn:example:user:babs.mgr@example.com
+  urn:example:group:cto-office@example.com:
+    - urn:example:user:angus.cto@example.com

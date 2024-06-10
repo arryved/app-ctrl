@@ -10,6 +10,7 @@ import (
 
 	"github.com/arryved/app-ctrl/api/config"
 	"github.com/arryved/app-ctrl/api/queue"
+	"github.com/arryved/app-ctrl/api/rbac"
 )
 
 type DeployRequest struct {
@@ -20,7 +21,7 @@ type DeployRequest struct {
 
 type DeployResponse struct {
 	DeployId string `json:"deployId"` // deployId (blank if not available)
-	Message  string `json:message"`   // message is either of success or failure
+	Message  string `json:"message"`  // message is either of success or failure
 }
 
 func ConfiguredHandlerDeploy(cfg *config.Config, jobQueue *queue.Queue) func(http.ResponseWriter, *http.Request) {
@@ -34,6 +35,15 @@ func ConfiguredHandlerDeploy(cfg *config.Config, jobQueue *queue.Queue) func(htt
 			handleMethodNotAllowed(w, msg)
 			return
 		}
+
+		// user authenticated?
+		if !authenticated(cfg, r) {
+			msg := fmt.Sprintf("user not authenticated")
+			handleUnauthorized(w, msg)
+			return
+		}
+		claims := getClaims(r)
+		log.Debugf("claims=%v", claims)
 
 		// parse the POST json request body (via r *http.Request) into a DeployRequest
 		var requestBody DeployRequest
@@ -63,6 +73,17 @@ func ConfiguredHandlerDeploy(cfg *config.Config, jobQueue *queue.Queue) func(htt
 			Region:  region,
 			Variant: variant,
 		}
+
+		// user authorized for action on target?
+		// TODO replace w/ claims results
+		principalUrn := config.PrincipalUrn(fmt.Sprintf("urn:arryved:user:%s", claims["email"]))
+		appUrn := fmt.Sprintf("urn:arryved:app:%s", app)
+		if !rbac.Authorized(cfg, principalUrn, config.Deploy, appUrn) {
+			msg := fmt.Sprintf("user not authorized in for deploy action")
+			handleForbidden(w, msg)
+			return
+		}
+		log.Debugf("Authorization granted for principal=%v, action=Deploy, app=%v", principalUrn, appUrn)
 
 		// if no such cluster, return 404
 		cluster, err := findClusterById(cfg, env, clusterId)

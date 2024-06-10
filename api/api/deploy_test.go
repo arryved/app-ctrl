@@ -5,6 +5,7 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -37,7 +38,10 @@ func TestSubmitAndObtainDeployId(t *testing.T) {
 
 	// simulate the API call
 	uri := "/deploy/dev/arryved-api/central/default"
+	fake_token, err := generateFakeIDToken()
+	assert.NoError(err)
 	req := httptest.NewRequest("POST", uri, bytes.NewBuffer(bodyBytes))
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", fake_token))
 	handler.ServeHTTP(recorder, req)
 	resp := recorder.Result()
 	responseBody, err := ioutil.ReadAll(resp.Body)
