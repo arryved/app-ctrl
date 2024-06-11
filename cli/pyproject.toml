@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "app-control"
-version = "2.3.0"
+version = "2.3.1"
 authors = [
   { name="Bill West", email="wwest@arryved.com" },
   { name="Jeremy Miller", email="jeremy@arryved.com" },
@@ -25,6 +25,7 @@ dependencies = [
   "requests",
   "deepmerge",
   "google-cloud-storage",
+  "arpy-sso>=0.1.0",
 ]
 
 [project.optional-dependencies]
