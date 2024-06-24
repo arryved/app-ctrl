@@ -33,7 +33,7 @@ def deploy(environment, application, region, variant, version):
         # TODO - use CA cert
         id_token = token().get("id_token")
         headers = {"Authorization": f"Bearer {id_token}"}
-        response = requests.post(url, json=body, headers=headers, verify=False)
+        response = requests.post(url, json=body, headers=headers, verify=True)
 
     status_code = math.floor(response.status_code / 100)
     if status_code == 5:
