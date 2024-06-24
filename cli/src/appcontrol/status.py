@@ -30,9 +30,8 @@ def status(environment, application, region, variant, canary, verbose, short):
         click.echo(click.style(f"Connecting to {url} ...", fg="green"))
 
         with click_spinner.spinner():
-            # TODO - use CA cert
             try:
-                response = requests.get(url, verify=False)
+                response = requests.get(url, verify=True)
             except Exception as e:
                 msg = str(e) if verbose > 0 else "Oops! Something went wrong. Check that you are connected to the VPN, or run with -v for more details."
                 raise click.UsageError(msg)
