@@ -6,10 +6,10 @@ TGZ := dist/app_control-$(VERSION).tar.gz
 VENV := venv/pyvenv.cfg
 
 
-build: $(WHEEL) test
+build: $(WHEEL) deps test
 
 $(VENV): pyproject.toml
-	python -m venv venv/
+	python3 -m venv venv/
 	. venv/bin/activate && pip install --upgrade pip
 	. venv/bin/activate && pip install keyring keyrings.google-artifactregistry-auth
 	. venv/bin/activate && pip install -e .
@@ -18,7 +18,7 @@ $(VENV): pyproject.toml
 deps: $(VENV)
 
 $(WHEEL): $(shell find src -type f -name "*.py")
-	PIP_NO_INPUT=1 python -m build
+	. venv/bin/activate && PIP_NO_INPUT=1 python3 -m build
 
 distclean:
 	\rm -rf venv/
@@ -26,8 +26,8 @@ distclean:
 	\mkdir dist/
 
 release: build
-	(gcloud config set project arryved-tools && gcloud config set artifacts/repository python && twine upload --skip-existing --repository-url https://oauth2accesstoken@us-central1-python.pkg.dev/arryved-tools/python/ $(WHEEL) $(TGZ))
+	(gcloud config set project arryved-tools && gcloud config set artifacts/repository python3 && . venv/bin/activate && twine upload --skip-existing --repository-url https://oauth2accesstoken@us-central1-python.pkg.dev/arryved-tools/python/ $(WHEEL) $(TGZ))
 
 test: deps
-	flake8 src/
-	pytest test/
+	. venv/bin/activate && flake8 src/
+	. venv/bin/activate && pytest test/

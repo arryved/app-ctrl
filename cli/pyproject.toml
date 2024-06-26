@@ -7,7 +7,7 @@ name = "app-control"
 version = "0.0.0"
 description = "app-control CLI"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.8"
 classifiers = [ "Programming Language :: Python :: 3", "Operating System :: OS Independent",]
 dependencies = [ "Click", "ansitable>=0.9", "click-spinner>=0.1", "colorama>=0.4", "pyyaml>=6", "requests", "deepmerge", "google-cloud-storage", "arpy-sso>=0.1.0",]
 [[project.authors]]
@@ -19,7 +19,7 @@ name = "Jeremy Miller"
 email = "jeremy@arryved.com"
 
 [project.optional-dependencies]
-tests = [ "build", "coverage>=6.5.0", "pytest>=7.2.0", "mypy>=0.991", "flake8>=6.0.0", "twine>=5.1.0", "types-requests>=2.28",]
+tests = [ "build", "coverage>=6.5.0", "pytest>=7.2.0", "mypy>=0.991", "flake8>=6.0.0", "twine>=5.0.0", "types-requests>=2.28",]
 
 [project.scripts]
 app-control = "appcontrol.cli:cli"
