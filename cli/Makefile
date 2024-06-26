@@ -6,7 +6,7 @@ TGZ := dist/app_control-$(VERSION).tar.gz
 VENV := venv/pyvenv.cfg
 
 
-build: $(WHEEL) deps test
+build: $(WHEEL) deps
 
 $(VENV): pyproject.toml
 	python3 -m venv venv/
@@ -17,7 +17,7 @@ $(VENV): pyproject.toml
 
 deps: $(VENV)
 
-$(WHEEL): $(shell find src -type f -name "*.py")
+$(WHEEL): $(shell find src -type f -name "*.py") deps
 	. venv/bin/activate && PIP_NO_INPUT=1 python3 -m build
 
 distclean:
