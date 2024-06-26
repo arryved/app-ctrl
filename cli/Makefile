@@ -10,6 +10,7 @@ build: $(WHEEL) test
 
 $(VENV): pyproject.toml
 	python -m venv venv/
+	. venv/bin/activate && pip install --upgrade pip
 	. venv/bin/activate && pip install keyring keyrings.google-artifactregistry-auth
 	. venv/bin/activate && pip install -e .
 	. venv/bin/activate && pip install ".[tests]"
