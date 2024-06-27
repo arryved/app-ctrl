@@ -33,3 +33,5 @@ tags
 build/
 app-control-worker
 var/
+
+./coverage.out

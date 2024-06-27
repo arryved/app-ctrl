@@ -6,7 +6,7 @@ require (
 	cloud.google.com/go/storage v1.40.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.9.0
-	github.com/arryved/app-ctrl/api v0.0.0-20240429155141-1dedccf13318
+	github.com/arryved/app-ctrl/api v0.0.0-20240610210212-abc16a604cac
 	google.golang.org/api v0.174.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.30.0
@@ -55,7 +55,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.25.0 // indirect
 	golang.org/x/crypto v0.22.0 // indirect
 	golang.org/x/net v0.24.0 // indirect
-	golang.org/x/oauth2 v0.19.0 // indirect
+	golang.org/x/oauth2 v0.21.0 // indirect
 	golang.org/x/sync v0.7.0 // indirect
 	golang.org/x/sys v0.19.0 // indirect
 	golang.org/x/term v0.19.0 // indirect
