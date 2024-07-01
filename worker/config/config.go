@@ -14,6 +14,9 @@ type Config struct {
 	AppControlDScheme  string `yaml:"appControlDScheme"`
 	AppControlDPSKPath string `yaml:"appControlDPSKPath"`
 
+	// App template map for kube
+	AppTemplates map[string]string `yaml:"appTemplates"`
+
 	// Arryved env short name
 	Env string `yaml:"env"`
 

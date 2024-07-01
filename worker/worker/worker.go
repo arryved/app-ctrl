@@ -19,8 +19,10 @@ import (
 	"cloud.google.com/go/storage"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
+	yaml "gopkg.in/yaml.v3"
 
 	apiconfig "github.com/arryved/app-ctrl/api/config"
+	productconfig "github.com/arryved/app-ctrl/api/config/product"
 	"github.com/arryved/app-ctrl/api/queue"
 	"github.com/arryved/app-ctrl/worker/config"
 	"github.com/arryved/app-ctrl/worker/gce"
@@ -159,6 +161,7 @@ func (w *Worker) getConfigBall(cluster apiconfig.Cluster, version string) ([]byt
 		log.Errorf("could get configball object contents err=%s", err.Error())
 		return []byte{}, err
 	}
+	log.Infof("got configball object for version=%s", mostRecent)
 	return data, nil
 }
 
@@ -210,6 +213,7 @@ func (w *Worker) expandTarball(tarStream []byte) (string, error) {
 			log.Errorf("could not do create file %s", filePath)
 			return "", err
 		}
+		log.Infof("extracted filePath=%s", filePath)
 
 		// copy contents of file from tar stream to new file
 		_, err = io.Copy(file, tarReader)
@@ -242,6 +246,45 @@ func (w *Worker) expandConfigBall(configBall []byte) (string, error) {
 	return tempDir, nil
 }
 
+func (w *Worker) compileConfig(tmpDir string, request *queue.DeployJobRequest) (string, error) {
+	region := request.Cluster.Id.Region
+	variant := request.Cluster.Id.Variant
+
+	defaultYamlPath := fmt.Sprintf("%s/.arryved/config/defaults.yaml", tmpDir)
+	envYamlPath := fmt.Sprintf("%s/.arryved/config/env/%s.yaml", tmpDir, w.cfg.Env)
+	regionYamlPath := fmt.Sprintf("%s/.arryved/config/region/%s.yaml", tmpDir, region)
+	variantYamlPath := fmt.Sprintf("%s/.arryved/config/variant/%s.yaml", tmpDir, variant)
+
+	defaultYaml := w.loadConfigYaml(defaultYamlPath)
+	envYaml := w.loadConfigYaml(envYamlPath)
+	regionYaml := w.loadConfigYaml(regionYamlPath)
+	variantYaml := w.loadConfigYaml(variantYamlPath)
+
+	appConfig, err := productconfig.MultiMerge(defaultYaml, envYaml, regionYaml, variantYaml)
+	if err != nil {
+		return "", err
+	}
+	appConfigBytes, err := yaml.Marshal(appConfig)
+	if err != nil {
+		return "", err
+	}
+	configPath := fmt.Sprintf("%s/.arryved/config/config.yaml", tmpDir)
+	err = ioutil.WriteFile(configPath, appConfigBytes, 0644)
+	if err != nil {
+		return "", err
+	}
+	return configPath, nil
+}
+
+func (w *Worker) loadConfigYaml(path string) string {
+	contents, err := ioutil.ReadFile(path)
+	if err != nil {
+		log.Warnf("could not read contents from yaml path=%s err=%s", path, err.Error())
+		return ""
+	}
+	return string(contents)
+}
+
 func (w *Worker) wipeTempDir(rootPath string) error {
 	err := os.RemoveAll(rootPath)
 	if err != nil {
@@ -250,8 +293,18 @@ func (w *Worker) wipeTempDir(rootPath string) error {
 	return nil
 }
 
-func (w *Worker) gkeApplyDeployment(resourceDir string, request *queue.DeployJobRequest) error {
-	// TODO If precompiled k8s (.gke) not present for env, generate k8s resources based on config/type/kind
+func (w *Worker) gkeApplyDeployment(resourceDir, compiledConfigPath string, request *queue.DeployJobRequest) error {
+	// If precompiled k8s (.gke) not present for env, generate k8s resources based on config/type/kind
+	if _, err := os.Stat(resourceDir); os.IsNotExist(err) {
+		log.Infof("resourceDir=%s does not exist, trying to generate", resourceDir)
+		err := gke.GenerateFromTemplate(w.cfg, compiledConfigPath, request)
+		if err != nil {
+			log.Errorf("could not generate files from template err=%s", err.Error())
+			return err
+		}
+	} else {
+		log.Infof("resourceDir=%s exists already")
+	}
 
 	// load yamls for deployment/statefulset resource
 	k8sObjects, err := gke.LoadDeployYaml(resourceDir)
@@ -311,11 +364,20 @@ func (w *Worker) processDeployJobGKE(job *queue.Job) (*JobResult, error) {
 	log.Debugf("temp dir created root=%s", tmpDir)
 	defer w.wipeTempDir(tmpDir)
 
+	// compile config
+	compiledConfig, err := w.compileConfig(tmpDir, request)
+	if err != nil {
+		log.Errorf("could not compile config for job id=%s err=%s", job.Id, err.Error())
+		return &result, err
+	}
+	log.Infof("config compiled to %s", compiledConfig)
+
 	// apply the k8s resources for the current env
 	env := w.cfg.Env
 	k8sDir := fmt.Sprintf("%s/.arryved/.gke/%s", tmpDir, env)
+	compiledConfig = fmt.Sprintf("%s/.arryved/config/config.yaml", tmpDir)
 	log.Infof("job id=%s k8sDir=%s", job.Id, k8sDir)
-	err = w.gkeApplyDeployment(k8sDir, request)
+	err = w.gkeApplyDeployment(k8sDir, compiledConfig, request)
 	if err != nil {
 		log.Infof("error encountered during apply/redeploy err=%s", err.Error())
 	}

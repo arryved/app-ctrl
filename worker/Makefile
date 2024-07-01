@@ -1,7 +1,7 @@
-PACKAGE_NAME := app-control-worker
-VERSION      := $(ARRYVED_BUILD_APP_VERSION)
-VERSION      ?= 0.0.0
-PACKAGE      := build/$(PACKAGE_NAME)_$(VERSION)_amd64.deb
+PACKAGE_NAME              := app-control-worker
+ARRYVED_BUILD_APP_VERSION ?= 0.0.0
+VERSION                   = $(ARRYVED_BUILD_APP_VERSION)
+PACKAGE                   := build/$(PACKAGE_NAME)_$(VERSION)_amd64.deb
 
 
 .PHONY: app-control-worker-dist build deps test coverage package clean release
@@ -24,10 +24,10 @@ coverage: test
 	go tool cover -html=coverage.out
 
 $(PACKAGE): app-control-worker-dist
-	nfpm pkg --packager deb --target build/
+	nfpm pkg --packager deb --target $(PACKAGE)
 
 clean:
-	rm app-control-worker coverage.out build/*
+	\rm -f app-control-worker coverage.out build/*
 
 release: build test
 	gcloud artifacts apt upload arryved-apt --location=us-central1 --project=arryved-tools --source=$(PACKAGE)
