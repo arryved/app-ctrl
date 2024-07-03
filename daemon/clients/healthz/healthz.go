@@ -51,8 +51,7 @@ func Check(healthzSpec config.Healthz) model.HealthResult {
 		return result
 	}
 
-	// any other status than "OK" is a health check failure
-	result.Healthy = string(body) == "OK"
+	result.Healthy = strings.TrimRight(string(body), "\n") == "OK"
 	result.Unknown = false
 	return result
 }
