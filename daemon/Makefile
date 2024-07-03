@@ -1,5 +1,5 @@
 PACKAGE_NAME = app-controld
-VERSION      = 2.0.0
+VERSION      = 2.0.2
 
 .PHONY: app-control-dist deploy deps test coverage package clean
 
@@ -18,11 +18,11 @@ test:
 coverage: test
 	go tool cover -html=coverage.out
 
-package: app-controld-dist
+package: app-controld-dist deps test
 	nfpm pkg --packager deb --target build/
 
 clean:
 	rm app-controld coverage.out build/*
 
-deploy: package
+release: package
 	gcloud artifacts apt upload arryved-apt --location=us-central1 --project=arryved-tools --source=build/$(PACKAGE_NAME)_$(VERSION)_amd64.deb

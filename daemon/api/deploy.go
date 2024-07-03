@@ -192,7 +192,6 @@ func waitForConverge(statusCache *model.StatusCache, app, version string, durati
 	converged := false
 	convergedInstall := false
 	convergedRunning := false
-	interval := time.Duration(duration * 5 / 100)
 
 	requestedVersion, err := model.ParseVersion(version)
 	if err != nil {
@@ -205,7 +204,7 @@ func waitForConverge(statusCache *model.StatusCache, app, version string, durati
 		go func() {
 			for {
 				log.Debugf("checking for convergence")
-				time.Sleep(time.Duration(interval))
+				time.Sleep(time.Duration(1 * time.Second))
 				latestStatuses := statusCache.GetStatuses()
 				installedVersion = latestStatuses[app].Versions.Installed
 				runningVersion = latestStatuses[app].Versions.Running
@@ -215,6 +214,7 @@ func waitForConverge(statusCache *model.StatusCache, app, version string, durati
 				converged = convergedInstall && convergedRunning
 				if converged {
 					convergeCh <- converged
+					return
 				}
 			}
 		}()
