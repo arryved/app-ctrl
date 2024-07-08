@@ -30,8 +30,8 @@ tags
 
 # End of https://www.toptal.com/developers/gitignore/api/vim
 
-build/
+build/*.deb
 app-control-worker
 var/
 
-./coverage.out
+coverage.out

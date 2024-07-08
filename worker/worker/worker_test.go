@@ -43,7 +43,7 @@ func TestWorkerGKE(t *testing.T) {
 				Repo:    "docker-product",
 				Runtime: "GKE",
 			},
-			Version: "0.0.3",
+			Version: "0.0.39",
 		},
 	}
 	result, err := worker.ProcessJob(&job)

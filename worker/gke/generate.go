@@ -44,7 +44,7 @@ var projectIdByEnv = map[string]string{
 	"stg":       "220668173143",
 }
 
-func GenerateFromTemplate(cfg *config.Config, compiledConfigPath string, request *queue.DeployJobRequest) error {
+func GenerateFromTemplate(cfg *config.Config, compiledConfigPath, arryvedDir string, request *queue.DeployJobRequest) error {
 	var err error
 
 	templateMap := cfg.AppTemplates
@@ -74,7 +74,7 @@ func GenerateFromTemplate(cfg *config.Config, compiledConfigPath string, request
 	switch kind {
 	case productconfig.KindOnline:
 		if templatePath, ok := templateMap[string(kind)]; ok {
-			err = generateOnlineResources(env, templatePath, compiledConfigPath, request.Version, gkeServiceAccount, appConfig)
+			err = generateOnlineResources(env, templatePath, arryvedDir, compiledConfigPath, request.Version, gkeServiceAccount, appConfig)
 		} else {
 			err = fmt.Errorf("could not find template for appName=%s config dir=%s, kind=%s", appName, configDir, kind)
 		}
@@ -89,11 +89,9 @@ func GenerateFromTemplate(cfg *config.Config, compiledConfigPath string, request
 	log.Infof("generated k8s resource defs from templates; appName=%s, kind=%v", appName, kind)
 	return err
 }
-
-func generateOnlineResources(env, templatePath, compiledConfigPath, version, gkeServiceAccount string, appConfig productconfig.AppConfig) error {
-	configDir := filepath.Dir(compiledConfigPath)
-	k8sDir := fmt.Sprintf("%s/.gke/%s", configDir, env)
-	controlScriptPath := fmt.Sprintf("%s/control", configDir)
+func generateOnlineResources(env, templatePath, arryvedDir, compiledConfigPath, version, gkeServiceAccount string, appConfig productconfig.AppConfig) error {
+	k8sDir := fmt.Sprintf("%s/.gke/%s", arryvedDir, env)
+	controlScriptPath := fmt.Sprintf("%s/control", arryvedDir)
 	log.Infof("rendered resources will be in k8sDir=%s", k8sDir)
 
 	// create k8s target dir if not present

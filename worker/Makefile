@@ -11,7 +11,8 @@ app-control-worker: $(shell find . -type f -name "*.go") deps
 
 build: $(PACKAGE)
 
-app-control-worker-dist: $(shell find . -type f -name "*.go") deps
+
+$(PACKAGE_NAME)-dist: $(shell find . -type f -name "*.go") deps
 	GOOS=linux GOARCH=amd64 go build .
 
 deps:
@@ -23,11 +24,11 @@ test: deps
 coverage: test
 	go tool cover -html=coverage.out
 
-$(PACKAGE): app-control-worker-dist
+$(PACKAGE): $(PACKAGE_NAME)-dist
 	nfpm pkg --packager deb --target $(PACKAGE)
 
 clean:
-	\rm -f app-control-worker coverage.out build/*
+	\rm -f $(PACKAGE_NAME) coverage.out build/*
 
 release: build test
 	gcloud artifacts apt upload arryved-apt --location=us-central1 --project=arryved-tools --source=$(PACKAGE)

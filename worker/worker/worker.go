@@ -161,7 +161,7 @@ func (w *Worker) getConfigBall(cluster apiconfig.Cluster, version string) ([]byt
 		log.Errorf("could get configball object contents err=%s", err.Error())
 		return []byte{}, err
 	}
-	log.Infof("got configball object for version=%s", mostRecent)
+	log.Infof("got configball object contents name=%s %d bytes", mostRecent, len(data))
 	return data, nil
 }
 
@@ -177,20 +177,26 @@ func (w *Worker) unzipGzip(gzipped []byte) ([]byte, error) {
 		log.Errorf("could not do gunzip of configball err=%s", err.Error())
 		return nil, err
 	}
+	log.Infof("gunzipped configball %d bytes", len(unzipped))
 	return unzipped, nil
 }
 
 func (w *Worker) expandTarball(tarStream []byte) (string, error) {
+	// Create a temporary directory to store the expanded tarball
 	tempDir, err := ioutil.TempDir("", "tempdir")
 	if err != nil {
 		log.Error("could not create temp dir")
 		return "", err
 	}
+
+	// Create a new tar reader to read the tar stream
 	tarReader := tar.NewReader(bytes.NewReader(tarStream))
+
+	// Loop through each file in the tar stream
 	for {
-		// read next file in tar stream
 		header, err := tarReader.Next()
 		if err == io.EOF {
+			log.Infof("end of tar stream reached")
 			break
 		}
 		if err != nil {
@@ -198,9 +204,13 @@ func (w *Worker) expandTarball(tarStream []byte) (string, error) {
 			return "", err
 		}
 
-		// create new file in temporary directory
+		// Create a new file in the temporary directory for the current file in the tar stream
 		filePath := tempDir + "/" + header.Name
+		log.Infof("copying file path=%s", filePath)
+
+		// Check if the file path ends with a "/" indicating a directory
 		if strings.HasSuffix(filePath, "/") {
+			// Create the directory and any necessary parent directories
 			err = os.MkdirAll(filepath.Dir(filePath), 0755)
 			if err != nil {
 				log.Errorf("could not do recursive mkdir %s", filepath.Dir(filePath))
@@ -208,27 +218,35 @@ func (w *Worker) expandTarball(tarStream []byte) (string, error) {
 			}
 			continue
 		}
+
+		// Create a new file for the current file in the tar stream
 		file, err := os.Create(filePath)
 		if err != nil {
+			// Encountered an error while creating the file, return the error
 			log.Errorf("could not do create file %s", filePath)
 			return "", err
 		}
 		log.Infof("extracted filePath=%s", filePath)
 
-		// copy contents of file from tar stream to new file
+		// Copy the contents of the file from the tar stream to the new file
 		_, err = io.Copy(file, tarReader)
 		if err != nil {
+			// Encountered an error while copying the file, return the error
 			log.Errorf("could not copy file %s", filePath)
 			return "", err
 		}
 
-		// close file
+		// Close the file
 		err = file.Close()
 		if err != nil {
+			// Encountered an error while closing the file, return the error
 			log.Errorf("could not close file %s", filePath)
 			return "", err
 		}
 	}
+
+	// Return the path to the temporary directory and any errors encountered
+	log.Infof("expanded config into dir=%s", tempDir)
 	return tempDir, nil
 }
 
@@ -246,14 +264,14 @@ func (w *Worker) expandConfigBall(configBall []byte) (string, error) {
 	return tempDir, nil
 }
 
-func (w *Worker) compileConfig(tmpDir string, request *queue.DeployJobRequest) (string, error) {
+func (w *Worker) compileConfig(arryvedDir string, request *queue.DeployJobRequest) (string, error) {
 	region := request.Cluster.Id.Region
 	variant := request.Cluster.Id.Variant
 
-	defaultYamlPath := fmt.Sprintf("%s/.arryved/config/defaults.yaml", tmpDir)
-	envYamlPath := fmt.Sprintf("%s/.arryved/config/env/%s.yaml", tmpDir, w.cfg.Env)
-	regionYamlPath := fmt.Sprintf("%s/.arryved/config/region/%s.yaml", tmpDir, region)
-	variantYamlPath := fmt.Sprintf("%s/.arryved/config/variant/%s.yaml", tmpDir, variant)
+	defaultYamlPath := fmt.Sprintf("%s/config/defaults.yaml", arryvedDir)
+	envYamlPath := fmt.Sprintf("%s/config/env/%s.yaml", arryvedDir, w.cfg.Env)
+	regionYamlPath := fmt.Sprintf("%s/config/region/%s.yaml", arryvedDir, region)
+	variantYamlPath := fmt.Sprintf("%s/config/variant/%s.yaml", arryvedDir, variant)
 
 	defaultYaml := w.loadConfigYaml(defaultYamlPath)
 	envYaml := w.loadConfigYaml(envYamlPath)
@@ -268,7 +286,7 @@ func (w *Worker) compileConfig(tmpDir string, request *queue.DeployJobRequest) (
 	if err != nil {
 		return "", err
 	}
-	configPath := fmt.Sprintf("%s/.arryved/config/config.yaml", tmpDir)
+	configPath := fmt.Sprintf("%s/config/config.yaml", arryvedDir)
 	err = ioutil.WriteFile(configPath, appConfigBytes, 0644)
 	if err != nil {
 		return "", err
@@ -293,17 +311,18 @@ func (w *Worker) wipeTempDir(rootPath string) error {
 	return nil
 }
 
-func (w *Worker) gkeApplyDeployment(resourceDir, compiledConfigPath string, request *queue.DeployJobRequest) error {
+func (w *Worker) gkeApplyDeployment(arryvedDir, compiledConfigPath string, request *queue.DeployJobRequest) error {
 	// If precompiled k8s (.gke) not present for env, generate k8s resources based on config/type/kind
+	resourceDir := fmt.Sprintf("%s/.gke/%s", arryvedDir, w.cfg.Env)
 	if _, err := os.Stat(resourceDir); os.IsNotExist(err) {
 		log.Infof("resourceDir=%s does not exist, trying to generate", resourceDir)
-		err := gke.GenerateFromTemplate(w.cfg, compiledConfigPath, request)
+		err := gke.GenerateFromTemplate(w.cfg, compiledConfigPath, arryvedDir, request)
 		if err != nil {
 			log.Errorf("could not generate files from template err=%s", err.Error())
 			return err
 		}
 	} else {
-		log.Infof("resourceDir=%s exists already")
+		log.Infof("resourceDir=%s exists already", resourceDir)
 	}
 
 	// load yamls for deployment/statefulset resource
@@ -339,6 +358,10 @@ func (w *Worker) gkeApplyDeployment(resourceDir, compiledConfigPath string, requ
 	return gke.ApplyDeployObject(w.cfg.KubeConfigPath, deployment)
 }
 
+//func (w *Worker) gkeApplySupportingResources(resourceDir string, request *queue.DeployJobRequest) error {
+//    // load yamls for resources other than deployment, statefulset
+//}
+
 func (w *Worker) processDeployJobGKE(job *queue.Job) (*JobResult, error) {
 	log.Infof("processing job id=%s as GKE deploy", job.Id)
 	result := JobResult{
@@ -364,20 +387,32 @@ func (w *Worker) processDeployJobGKE(job *queue.Job) (*JobResult, error) {
 	log.Debugf("temp dir created root=%s", tmpDir)
 	defer w.wipeTempDir(tmpDir)
 
-	// compile config
-	compiledConfig, err := w.compileConfig(tmpDir, request)
+	// Compile app config for this target
+	arryvedDir := fmt.Sprintf("%s/.arryved", tmpDir)
+	compiledConfigPath, err := w.compileConfig(arryvedDir, request)
 	if err != nil {
 		log.Errorf("could not compile config for job id=%s err=%s", job.Id, err.Error())
 		return &result, err
 	}
-	log.Infof("config compiled to %s", compiledConfig)
+	log.Debugf("compiled config=%s", compiledConfigPath)
 
-	// apply the k8s resources for the current env
-	env := w.cfg.Env
-	k8sDir := fmt.Sprintf("%s/.arryved/.gke/%s", tmpDir, env)
-	compiledConfig = fmt.Sprintf("%s/.arryved/config/config.yaml", tmpDir)
-	log.Infof("job id=%s k8sDir=%s", job.Id, k8sDir)
-	err = w.gkeApplyDeployment(k8sDir, compiledConfig, request)
+	// If precompiled k8s (.gke) not present for env, generate k8s resources based on config/type/kind
+	if !w.kubeResourceDefsPresent(arryvedDir) {
+		err = gke.GenerateFromTemplate(w.cfg, arryvedDir, compiledConfigPath, request)
+		if err != nil {
+			log.Errorf("no k8s resource defs for job id=%s err=%s", job.Id, err.Error())
+			return &result, err
+		}
+	}
+
+	// apply the k8s non-pod resourcess (config, secrets, LB, etc); don't wait/block
+	//err = w.gkeApplySupportingResources(k8sDir, request)
+	//if err != nil {
+	//    log.Infof("error encountered during apply/redeploy of supporting resources err=%s", err.Error())
+	//}
+
+	// apply the k8s deploy resources for the current env
+	err = w.gkeApplyDeployment(arryvedDir, compiledConfigPath, request)
 	if err != nil {
 		log.Infof("error encountered during apply/redeploy err=%s", err.Error())
 	}
@@ -423,6 +458,64 @@ func (w *Worker) processDeployJobGCE(job *queue.Job) (*JobResult, error) {
 	// TODO return a job result w/ details as reported by app-controld (failed|succeeded)
 	log.Errorf("processDeployJobGCE not yet implemented job id=%s result=%v, request=%v", job.Id, result, request)
 	return nil, nil
+}
+
+// check if .arryved/.gke has directories
+func (w *Worker) kubeResourceDefsPresent(arryvedDir string) bool {
+	root := fmt.Sprintf("%s/.gke", arryvedDir)
+	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			log.Debugf("error looking for kube resource defs err=%s", err.Error())
+			return err
+		}
+		extension := strings.Split(info.Name(), ".")[len(strings.Split(info.Name(), "."))-1]
+		if !info.IsDir() && extension == "yaml" {
+			return nil
+		}
+		return nil
+	})
+	if err != nil {
+		log.Debugf("kubeResourceDefsPresent root=%s err=%s", root, err.Error())
+	}
+	log.Debugf("kubeResourceDefsPresent root=%s", root)
+	return false
+}
+
+//func (w *Worker) compileConfig(dir string, request *queue.DeployJobRequest) (string, error) {
+//    log.Infof("compiling config; config dir=%s cluster=(%v,%v,%v,%v)",
+//        dir, request.Cluster.Id.App, w.cfg.Env, request.Cluster.Id.Region, request.Cluster.Id.Variant)
+
+//    defaultPath := fmt.Sprintf("%s/config/defaults.yaml", dir)
+//    envPath := fmt.Sprintf("%s/config/env/%s.yaml", dir, w.cfg.Env)
+//    regionPath := fmt.Sprintf("%s/config/region/%s.yaml", dir, request.Cluster.Id.Region)
+//    variantPath := fmt.Sprintf("%s/config/variant/%s.yaml", dir, request.Cluster.Id.Variant)
+
+//    defaultYaml := readFileAsString(defaultPath)
+//    envYaml := readFileAsString(envPath)
+//    regionYaml := readFileAsString(regionPath)
+//    variantYaml := readFileAsString(variantPath)
+
+//    appConfig, err := productconfig.MultiMerge(defaultYaml, envYaml, regionYaml, variantYaml)
+//    outputPath := fmt.Sprintf("%s/config.yaml", dir)
+//    compiledConfigYaml, err := yaml.Marshal(appConfig)
+//    if err != nil {
+//        return "", fmt.Errorf("Error marshaling compiled config err=%s", err.Error())
+//    }
+//    err = ioutil.WriteFile(outputPath, []byte(compiledConfigYaml), 0600)
+//    if err != nil {
+//        return "", fmt.Errorf("Error writing config file err=%s", err.Error())
+//    }
+//    log.Debugf("Wrote config file path=%s", outputPath)
+//    return outputPath, nil
+//}
+
+func readFileAsString(filename string) string {
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
+		log.Warnf("could not open file=%s", filename)
+		return ""
+	}
+	return string(data)
 }
 
 func New(cfg *config.Config, jobQueue *queue.Queue, compute *gce.Client) *Worker {

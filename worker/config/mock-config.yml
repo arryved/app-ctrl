@@ -11,4 +11,4 @@ queue:
   subscription: app-control-jobs--app-control
 
 appTemplates:
-  online: ./templates/online
+  online: ../templates/online

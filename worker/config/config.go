@@ -14,9 +14,6 @@ type Config struct {
 	AppControlDScheme  string `yaml:"appControlDScheme"`
 	AppControlDPSKPath string `yaml:"appControlDPSKPath"`
 
-	// App template map for kube
-	AppTemplates map[string]string `yaml:"appTemplates"`
-
 	// Arryved env short name
 	Env string `yaml:"env"`
 
@@ -34,6 +31,9 @@ type Config struct {
 
 	// Google Service Account Key Path
 	ServiceAccountKeyPath string `yaml:"serviceAccountKeyPath"`
+
+	// Name of template is key, root path containing templates is value
+	AppTemplates map[string]string `yaml:"appTemplates"`
 }
 
 func (c *Config) setDefaults() {
