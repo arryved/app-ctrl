@@ -29,5 +29,5 @@ build: $(PACKAGE)
 clean:
 	\rm $(PACKAGE_NAME) coverage.out build/*
 
-release: package
+release: build
 	gcloud artifacts apt upload arryved-apt --location=us-central1 --project=arryved-tools --source=build/$(PACKAGE_NAME)_$(VERSION)_amd64.deb
