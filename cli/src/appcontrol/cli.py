@@ -2,6 +2,7 @@ import atexit
 import certifi
 import click
 import os
+import pkg_resources
 import platform
 import subprocess
 import tempfile
@@ -14,7 +15,7 @@ from appcontrol.version import version
 
 
 def cleanup():
-    print("Cleaning up...")
+    click.echo(click.style("Cleaning up.", fg="white"), err=True)
     temp_dir = os.environ.get("APP_CONTROL_TEMP_DIR", "")
     if os.path.exists(temp_dir):
         for root, dirs, files in os.walk(temp_dir, topdown=False):
@@ -41,8 +42,27 @@ def merge_ca():
     return merged_ca_path
 
 
+def check_for_updates():
+    click.echo(click.style("Checking for updates...", fg="white"), err=True)
+    try:
+        result = subprocess.run(
+            ['pip', 'install', 'app-control', '--upgrade', '--dry-run'],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        if 'Would install app-control' in result.stdout:
+            click.echo(click.style("An update is available for app-control; use \"pip -U app-control\" to update", fg="yellow"), err=True)
+        else:
+            click.echo(click.style("app-control is up-to-date", fg="green"), err=True)
+    except subprocess.CalledProcessError as e:
+        print(f"An error occurred: {e}")
+        return False
+
+
 @click.group()
 def cli():
+    check_for_updates()
     atexit.register(cleanup)
     with tempfile.TemporaryDirectory(delete=False) as temp_dir:
         os.environ["APP_CONTROL_TEMP_DIR"] = temp_dir
