@@ -2,7 +2,6 @@ import atexit
 import certifi
 import click
 import os
-import pkg_resources
 import platform
 import subprocess
 import tempfile
