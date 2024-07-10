@@ -31,6 +31,9 @@ type Config struct {
 
 	// Google Service Account Key Path
 	ServiceAccountKeyPath string `yaml:"serviceAccountKeyPath"`
+
+	// Name of template is key, root path containing templates is value
+	AppTemplates map[string]string `yaml:"appTemplates"`
 }
 
 func (c *Config) setDefaults() {

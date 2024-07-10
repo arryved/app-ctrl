@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+  name: {{.AppConfig.Name}}
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 2
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: {{.AppConfig.Name}}
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: {{.AppConfig.Name}}
+    spec:
+      containers:
+      - env:
+        - name: ARRYVED_DEPLOY_APP_NAME
+          value: {{.AppConfig.Name}}
+        - name: ARRYVED_DEPLOY_APP_PORT
+          value: "{{.AppConfig.Port}}"
+        - name: ARRYVED_DEPLOY_APP_VERSION
+          value: {{.Version}}
+        - name: METADATA_K8S_POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: spec.nodeName
+        - name: METADATA_K8S_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: METADATA_K8S_POD_UID
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.uid
+        image: us-central1-docker.pkg.dev/arryved-tools/product-docker/{{.AppConfig.Name}}:{{.Version}}
+        imagePullPolicy: Always
+        name: {{.AppConfig.Name}}
+        ports:
+        - containerPort: {{.AppConfig.Port}}
+          protocol: TCP
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /var/config
+          name: config
+          readOnly: true
+        - mountPath: /var/secrets
+          name: secrets
+          readOnly: true
+      dnsPolicy: ClusterFirst
+      nodeSelector:
+        iam.gke.io/gke-metadata-server-enabled: "true"
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: {{.GKEServiceAccount}}
+      serviceAccountName: {{.GKEServiceAccount}}
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: config
+        configMap:
+          name: {{.AppConfig.Name}}
+          defaultMode: 420
+      - name: secrets
+        csi:
+          driver: secrets-store.csi.k8s.io
+          readOnly: true
+          volumeAttributes:
+            secretProviderClass: {{.AppConfig.Name}}

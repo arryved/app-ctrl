@@ -9,3 +9,6 @@ queue:
   project: arryved-177921
   topic: app-control-jobs
   subscription: app-control-jobs--app-control
+
+appTemplates:
+  online: ../templates/online

@@ -9,6 +9,7 @@ import (
 
 	"github.com/arryved/app-ctrl/api/queue"
 	"github.com/arryved/app-ctrl/worker/config"
+	"github.com/arryved/app-ctrl/worker/gce"
 	"github.com/arryved/app-ctrl/worker/worker"
 )
 
@@ -44,11 +45,12 @@ func main() {
 		panic(msg)
 	}
 	jobQueue := queue.NewQueue(cfg.Queue, client)
+	gceClient := gce.NewClient(cfg.Env, "us-central1")
 
 	// TODO - ship logs to fluentd/log aggregation
 	// TODO - collect and expose metrics
 
 	// start app-control-worker thread(s)
-	worker := worker.New(cfg, jobQueue)
+	worker := worker.New(cfg, jobQueue, gceClient)
 	worker.Start()
 }

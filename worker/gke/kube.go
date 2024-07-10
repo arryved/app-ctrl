@@ -117,7 +117,7 @@ func ApplyDeployObject(kubeconfigPath string, deployment *v1.Deployment) error {
 		log.Infof("deployment patch for rolling update succeeded name=%s", deployment.Name)
 	}
 
-	// add hysteresis to avoid false positive for brief initial Running states
+	// account for hysteresis to avoid false positive for brief initial Running states
 	time.Sleep(3 * time.Second)
 
 	// wait for deploy status to settle i.e. pods are in some perm/semi-perm state
