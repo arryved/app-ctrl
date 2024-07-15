@@ -5,6 +5,7 @@ import os
 import platform
 import subprocess
 import tempfile
+import time
 
 from appcontrol.restart import restart
 from appcontrol.status import status
@@ -14,6 +15,7 @@ from appcontrol.version import version
 
 
 def cleanup():
+    check_for_updates()
     click.echo(click.style("Cleaning up.", fg="white"), err=True)
     temp_dir = os.environ.get("APP_CONTROL_TEMP_DIR", "")
     if os.path.exists(temp_dir):
@@ -42,6 +44,20 @@ def merge_ca():
 
 
 def check_for_updates():
+    check_ttl_s = 60 * 60
+    home_dir = os.environ.get("HOME")
+    update_dotfile = f"{home_dir}/.app-control-update"
+    current_time = time.time()
+    try:
+        last_modified = os.path.getmtime(update_dotfile)
+        time_diff = current_time - last_modified
+    except FileNotFoundError:
+        open(update_dotfile, 'a').close()
+        time_diff = check_ttl_s
+
+    if time_diff < check_ttl_s:
+        return True
+
     click.echo(click.style("Checking for updates...", fg="white"), err=True)
     try:
         result = subprocess.run(
@@ -51,17 +67,18 @@ def check_for_updates():
             check=True
         )
         if 'Would install app-control' in result.stdout:
-            click.echo(click.style("An update is available for app-control; use \"pip -U app-control\" to update", fg="yellow"), err=True)
+            click.echo(click.style("An update is available for app-control; use \"pip install -U app-control\" to update", fg="yellow"), err=True)
         else:
             click.echo(click.style("app-control is up-to-date", fg="green"), err=True)
     except subprocess.CalledProcessError as e:
         print(f"An error occurred: {e}")
         return False
+    os.utime(update_dotfile, (current_time, current_time))
+    return True
 
 
 @click.group()
 def cli():
-    check_for_updates()
     atexit.register(cleanup)
     with tempfile.TemporaryDirectory(delete=False) as temp_dir:
         os.environ["APP_CONTROL_TEMP_DIR"] = temp_dir
