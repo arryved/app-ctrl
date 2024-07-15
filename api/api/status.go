@@ -21,6 +21,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/arryved/app-ctrl/api/config"
+	"github.com/arryved/app-ctrl/api/runners"
 	"github.com/arryved/app-ctrl/daemon/model"
 )
 
@@ -28,7 +29,7 @@ type HttpClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-func ConfiguredHandlerStatus(cfg *config.Config) func(http.ResponseWriter, *http.Request) {
+func ConfiguredHandlerStatus(cfg *config.Config, gceCache *runners.GCECache) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("content-type", "application/json")
 		httpStatus := http.StatusOK
@@ -58,7 +59,7 @@ func ConfiguredHandlerStatus(cfg *config.Config) func(http.ResponseWriter, *http
 				if (app == clusterId.App || app == "any") &&
 					(region == clusterId.Region || region == "any") &&
 					(variant == clusterId.Variant || variant == "any") {
-					clusterStatus, err := GetClusterStatus(cfg, env, clusterId.App, clusterId.Region, clusterId.Variant)
+					clusterStatus, err := GetClusterStatus(cfg, gceCache, env, clusterId)
 					if err != nil {
 						log.Errorf("error fetching statuses: %v", err.Error())
 						handleInternalServerError(w, err)
@@ -80,7 +81,11 @@ func ConfiguredHandlerStatus(cfg *config.Config) func(http.ResponseWriter, *http
 			return
 		}
 
-		clusterStatus, err := GetClusterStatus(cfg, env, app, region, variant)
+		clusterStatus, err := GetClusterStatus(cfg, gceCache, env, config.ClusterId{
+			App:     app,
+			Region:  region,
+			Variant: variant,
+		})
 		if err != nil {
 			log.Errorf("error fetching statuses: %v", err.Error())
 			handleInternalServerError(w, err)
@@ -112,11 +117,13 @@ type ClusterStatus struct {
 
 type HostStatus map[string]*model.Status
 
-func GetClusterStatus(cfg *config.Config, env, app, region, variant string) (*ClusterStatus, error) {
+func GetClusterStatus(cfg *config.Config, gceCache *runners.GCECache, env string, clusterId config.ClusterId) (*ClusterStatus, error) {
 	// find the cluster in topology by id
-	log.Debugf("looking up env=%s, app=%s, region=%s, variant=%s", env, app, region, variant)
+	app := clusterId.App
+	region := clusterId.Region
+	variant := clusterId.Variant
 
-	cluster, err := findClusterById(cfg, env, config.ClusterId{App: app, Region: region, Variant: variant})
+	cluster, err := findClusterById(cfg, gceCache, env, config.ClusterId{App: app, Region: region, Variant: variant})
 	if err != nil {
 		return nil, err
 	}
@@ -125,13 +132,11 @@ func GetClusterStatus(cfg *config.Config, env, app, region, variant string) (*Cl
 		log.Infof(msg)
 		return nil, errors.New(msg)
 	}
-
 	if cluster.Runtime == "GKE" {
 		return GetClusterStatusGKE(env, cfg, cluster)
 	} else if cluster.Runtime == "GCE" {
 		return GetClusterStatusGCE(env, cfg, cluster)
 	}
-
 	return nil, errors.New(fmt.Sprintf("unsupported cluster runtime %s", cluster.Runtime))
 }
 

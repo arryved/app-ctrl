@@ -11,6 +11,7 @@ import (
 	"github.com/arryved/app-ctrl/api/config"
 	"github.com/arryved/app-ctrl/api/queue"
 	"github.com/arryved/app-ctrl/api/rbac"
+	"github.com/arryved/app-ctrl/api/runners"
 )
 
 type DeployRequest struct {
@@ -24,7 +25,7 @@ type DeployResponse struct {
 	Message  string `json:"message"`  // message is either of success or failure
 }
 
-func ConfiguredHandlerDeploy(cfg *config.Config, jobQueue *queue.Queue) func(http.ResponseWriter, *http.Request) {
+func ConfiguredHandlerDeploy(cfg *config.Config, gceCache *runners.GCECache, jobQueue *queue.Queue) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		httpStatus := http.StatusOK
@@ -86,7 +87,7 @@ func ConfiguredHandlerDeploy(cfg *config.Config, jobQueue *queue.Queue) func(htt
 		log.Debugf("Authorization granted for principal=%v, action=Deploy, app=%v", principalUrn, appUrn)
 
 		// if no such cluster, return 404
-		cluster, err := findClusterById(cfg, env, clusterId)
+		cluster, err := findClusterById(cfg, gceCache, env, clusterId)
 		if err != nil {
 			log.Errorf("error fetching cluster status, cannot submit deploy: %v", err.Error())
 			handleInternalServerError(w, err)

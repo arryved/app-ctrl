@@ -94,8 +94,8 @@ type Cluster struct {
 
 // uniquely identifies them, enforce this constraint as needed (using as a map key, for instance)
 type ClusterId struct {
-	App     string `json:"app" yaml:"app"`
-	Region  string `json:"region" yaml:"region"`
+	App     string `json:"app"     yaml:"app"`
+	Region  string `json:"region"  yaml:"region"`
 	Variant string `json:"variant" yaml:"variant"`
 }
 
