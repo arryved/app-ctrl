@@ -6,6 +6,7 @@ constants = {
         "api_hosts_by_env": {
             "cde": "https://app-control.cde.arryved.com",
             "dev": "https://app-control.dev.arryved.com:1026",
+            "dev-int": "https://app-control.dev-int.arryved.com:1026",
             "prod": "https://app-control.prod.arryved.com:1026",
             "sandbox": "https://app-control.dev.arryved.com:1026",
             "stg": "https://app-control.stg.arryved.com:1026",
