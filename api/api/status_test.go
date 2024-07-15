@@ -78,7 +78,7 @@ func TestGetClusterStatuses(t *testing.T) {
 		},
 	}
 
-	status, err := GetClusterStatus(cfg, "dev", "arryved-api", "central", "default")
+	status, err := GetClusterStatus(cfg, nil, "dev", config.ClusterId{App: "arryved-api", Region: "central", Variant: "default"})
 
 	assert.Nil(err)
 	assert.NotNil(status)

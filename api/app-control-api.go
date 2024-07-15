@@ -8,6 +8,7 @@ import (
 
 	"github.com/arryved/app-ctrl/api/api"
 	"github.com/arryved/app-ctrl/api/config"
+	"github.com/arryved/app-ctrl/api/runners"
 )
 
 const (
@@ -34,7 +35,11 @@ func main() {
 	// TODO - ship logs to fluentd/log aggregation
 	// TODO - collect and expose metrics
 
+	// initialize a GCE cache and refresh runner
+	gceCacheRunner := runners.NewGCECacheRunner(cfg)
+	gceCacheRunner.Start()
+
 	// start app-control-api listener
-	api := api.New(cfg)
+	api := api.New(cfg, gceCacheRunner.Cache)
 	api.Start()
 }

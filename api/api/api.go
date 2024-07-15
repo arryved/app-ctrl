@@ -7,13 +7,16 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	compute "google.golang.org/api/compute/v1"
 
 	"github.com/arryved/app-ctrl/api/config"
 	"github.com/arryved/app-ctrl/api/queue"
+	"github.com/arryved/app-ctrl/api/runners"
 )
 
 type Api struct {
-	cfg *config.Config
+	cfg      *config.Config
+	gceCache *runners.GCECache
 }
 
 func (a *Api) Start() error {
@@ -27,8 +30,8 @@ func (a *Api) Start() error {
 	jobQueue := queue.NewQueue(cfg.Queue, queueClient)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/status/", ConfiguredHandlerStatus(cfg))
-	mux.HandleFunc("/deploy/", ConfiguredHandlerDeploy(cfg, jobQueue))
+	mux.HandleFunc("/status/", ConfiguredHandlerStatus(cfg, a.gceCache))
+	mux.HandleFunc("/deploy/", ConfiguredHandlerDeploy(cfg, a.gceCache, jobQueue))
 
 	tlsConfig := &tls.Config{
 		CipherSuites:             CipherSuitesFromConfig(cfg.TLS.Ciphers),
@@ -57,8 +60,11 @@ func (a *Api) Start() error {
 	return err
 }
 
-func New(cfg *config.Config) *Api {
-	api := &Api{cfg: cfg}
+func New(cfg *config.Config, cache *runners.GCECache) *Api {
+	api := &Api{
+		cfg:      cfg,
+		gceCache: cache,
+	}
 	return api
 }
 
@@ -156,13 +162,53 @@ func extractQueryParams(r *http.Request) map[string]string {
 	return params
 }
 
-func findClusterById(cfg *config.Config, env string, id config.ClusterId) (*config.Cluster, error) {
+func findClusterById(cfg *config.Config, gceCache *runners.GCECache, env string, id config.ClusterId) (*config.Cluster, error) {
+	app := id.App
+	region := id.Region
+	variant := id.Variant
+	log.Infof("searching for target ID app=%s, region=%s, variant=%s", app, region, variant)
 	for _, cluster := range cfg.Topology[env].Clusters {
-		log.Debugf("cluster: %v", cluster)
-		cid := cluster.Id
-		if cid.App == id.App && cid.Region == id.Region && cid.Variant == id.Variant {
+		configId := cluster.Id
+		if configId.App == app && configId.Region == region && configId.Variant == variant {
+			log.Infof("found target ID app=%s, region=%s, variant=%s", app, region, variant)
+			// if GCE clusters if host list is empty, use discovery cache
+			if cluster.Runtime == "GCE" && len(cluster.Hosts) == 0 {
+				// use cache to get hosts
+				instances := gceCache.Get()[configId]
+				// find & set host values, canary markers
+				cluster.Hosts = instancesToHostList(instances, env)
+			}
 			return &cluster, nil
 		}
 	}
 	return nil, nil
+}
+
+func instancesToHostList(instances []*compute.Instance, env string) map[string]config.Host {
+	// TODO replace with API or canon lookup or fix tools/internal and sandbox/dev incongruities
+	fqdnMap := map[string]string{
+		"cde":     "cde.arryved.com",
+		"dev":     "dev.arryved.com",
+		"dev-int": "dev-int.arryved.com",
+		"prod":    "prod.arryved.com",
+		"sandbox": "dev.arryved.com",
+		"stg":     "stg.arryved.com",
+		"tools":   "internal.arryved.com",
+	}
+	hosts := map[string]config.Host{}
+	for _, instance := range instances {
+		labels := instance.Labels
+		canary := false
+		canaryStr, ok := labels["canary"]
+		if ok {
+			if canaryStr == "true" {
+				canary = true
+			}
+		}
+		fqdn := fmt.Sprintf("%s.%s", instance.Name, fqdnMap[env])
+		hosts[fqdn] = config.Host{
+			Canary: canary,
+		}
+	}
+	return hosts
 }

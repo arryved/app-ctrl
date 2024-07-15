@@ -25,7 +25,7 @@ func TestSubmitAndObtainDeployId(t *testing.T) {
 
 	// set up interaction request and recorder for deploy handler
 	recorder := httptest.NewRecorder()
-	handler := http.HandlerFunc(ConfiguredHandlerDeploy(cfg, nil))
+	handler := http.HandlerFunc(ConfiguredHandlerDeploy(cfg, nil, nil))
 	requestBody := DeployRequest{
 		Concurrency: "1",
 		Version:     "0.1.0",
