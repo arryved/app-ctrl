@@ -1,3 +1,7 @@
+| `build` status | `release` status |
+|:---:|:---:|
+| ![`build` status](https://teamcity.internal.arryved.com/app/rest/builds/buildType:id:AppControl_Build/statusIcon.svg) | ![`release` status](https://teamcity.internal.arryved.com/app/rest/builds/buildType:id:AppControl_Release/statusIcon.svg) |
+
 # app-control
 
 A CLI for the app-control service, which lets SRE, developers & oncall control deployed apps at Arryved.
