@@ -48,6 +48,9 @@ type Config struct {
 	RoleMemberships map[Role][]GroupUrn         `yaml:"roleMemberships"`
 	AccessEntries   []AccessEntry               `yaml:"accessEntries"`
 	UsersByGroups   map[GroupUrn][]PrincipalUrn `yaml:"usersByGroups"`
+
+	// ServiceAccounts for Secret access
+	SecretsServiceAccounts []string `yaml:"secretsServiceAccounts"`
 }
 
 type GroupUrn string
@@ -71,8 +74,13 @@ const (
 type Permission string
 
 const (
-	Deploy  Permission = "deploy"
-	Restart Permission = "restart"
+	Deploy        Permission = "deploy"
+	Restart       Permission = "restart"
+	SecretsList   Permission = "secretsList"
+	SecretsRead   Permission = "secretsRead"
+	SecretsCreate Permission = "secretsCreate"
+	SecretsUpdate Permission = "secretsUpdate"
+	SecretsDelete Permission = "secretsDelete"
 )
 
 type RoleMemberships map[Role][]string

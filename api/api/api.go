@@ -14,6 +14,17 @@ import (
 	"github.com/arryved/app-ctrl/api/runners"
 )
 
+// TODO replace with API or canon lookup or fix tools/internal and sandbox/dev incongruities
+var fqdnMap = map[string]string{
+	"cde":     "cde.arryved.com",
+	"dev":     "dev.arryved.com",
+	"dev-int": "dev-int.arryved.com",
+	"prod":    "prod.arryved.com",
+	"sandbox": "dev.arryved.com",
+	"stg":     "stg.arryved.com",
+	"tools":   "internal.arryved.com",
+}
+
 type Api struct {
 	cfg      *config.Config
 	gceCache *runners.GCECache
@@ -32,6 +43,7 @@ func (a *Api) Start() error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/status/", ConfiguredHandlerStatus(cfg, a.gceCache))
 	mux.HandleFunc("/deploy/", ConfiguredHandlerDeploy(cfg, a.gceCache, jobQueue))
+	mux.HandleFunc("/secrets/", ConfiguredHandlerSecrets(cfg))
 
 	tlsConfig := &tls.Config{
 		CipherSuites:             CipherSuitesFromConfig(cfg.TLS.Ciphers),
@@ -112,6 +124,14 @@ func handleBadRequest(w http.ResponseWriter, msg string) {
 	return
 }
 
+func handleConflict(w http.ResponseWriter, msg string) {
+	httpStatus := http.StatusConflict
+	errorBody := fmt.Sprintf("{\"error\": \"%s\"}", msg)
+	w.WriteHeader(httpStatus)
+	w.Write([]byte(errorBody))
+	return
+}
+
 func handleNotFound(w http.ResponseWriter, msg string) {
 	httpStatus := http.StatusNotFound
 	errorBody := fmt.Sprintf("{\"not found\": \"%s\"}", msg)
@@ -185,16 +205,6 @@ func findClusterById(cfg *config.Config, gceCache *runners.GCECache, env string,
 }
 
 func instancesToHostList(instances []*compute.Instance, env string) map[string]config.Host {
-	// TODO replace with API or canon lookup or fix tools/internal and sandbox/dev incongruities
-	fqdnMap := map[string]string{
-		"cde":     "cde.arryved.com",
-		"dev":     "dev.arryved.com",
-		"dev-int": "dev-int.arryved.com",
-		"prod":    "prod.arryved.com",
-		"sandbox": "dev.arryved.com",
-		"stg":     "stg.arryved.com",
-		"tools":   "internal.arryved.com",
-	}
 	hosts := map[string]config.Host{}
 	for _, instance := range instances {
 		labels := instance.Labels

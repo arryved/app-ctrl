@@ -13,6 +13,19 @@ import (
 	"github.com/arryved/app-ctrl/api/config"
 )
 
+// TODO use a canon API/library instead of hard-coding
+var ProjectMap = map[string]string{
+	"demo":      "arryved-demo1",
+	"dev":       "arryved-177921",
+	"dev-int":   "arryved-234222",
+	"tools":     "arryved-tools",
+	"stg":       "arryved-staging",
+	"prod":      "arryved-prod",
+	"cde":       "arryved-secure",
+	"sandbox":   "arryved-177921",
+	"simc-prod": "simc-prod",
+}
+
 type Client struct {
 	cancel context.CancelFunc
 	client *compute.Service
@@ -81,19 +94,7 @@ func (c *Client) GetRegionAppControlInstances() (map[config.ClusterId][]*compute
 }
 
 func (c *Client) getGCPProjectId() string {
-	// TODO use a canon API/library instead of hard-coding
-	projectMap := map[string]string{
-		"demo":      "arryved-demo1",
-		"dev":       "arryved-177921",
-		"dev-int":   "arryved-234222",
-		"tools":     "arryved-tools",
-		"stg":       "arryved-staging",
-		"prod":      "arryved-prod",
-		"cde":       "arryved-secure",
-		"sandbox":   "arryved-177921",
-		"simc-prod": "simc-prod",
-	}
-	return projectMap[c.Env]
+	return ProjectMap[c.Env]
 }
 
 func (c *Client) getGCPRegion() string {
