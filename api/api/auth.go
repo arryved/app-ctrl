@@ -38,7 +38,7 @@ func authenticated(cfg *config.Config, r *http.Request) bool {
 		return false
 	}
 
-	log.Infof("claims=%v", claims)
+	log.Debugf("claims=%v", claims)
 	return true
 }
 
@@ -98,6 +98,14 @@ func decodeIDToken(idToken string) map[string]interface{} {
 func getClaims(r *http.Request) map[string]interface{} {
 	authHeader := r.Header.Get("Authorization")
 	authValue := strings.Split(authHeader, "Bearer")
-	idToken := strings.TrimSpace(authValue[1])
+	var idToken string
+	if len(authValue) > 1 {
+		idToken = strings.TrimSpace(authValue[1])
+	}
+	if idToken == "" {
+		// reminder: do not log the token value
+		log.Warn("could not parse Authorization header Bearer token")
+		return nil
+	}
 	return decodeIDToken(idToken)
 }

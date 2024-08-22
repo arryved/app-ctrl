@@ -79,8 +79,9 @@ func ConfiguredHandlerDeploy(cfg *config.Config, gceCache *runners.GCECache, job
 		// TODO replace w/ claims results
 		principalUrn := config.PrincipalUrn(fmt.Sprintf("urn:arryved:user:%s", claims["email"]))
 		appUrn := fmt.Sprintf("urn:arryved:app:%s", app)
-		if !rbac.Authorized(cfg, principalUrn, config.Deploy, appUrn) {
-			msg := fmt.Sprintf("user not authorized in for deploy action")
+		if err := rbac.Authorized(r.Context(), cfg, nil, principalUrn, config.Deploy, appUrn); err != nil {
+			log.Infof("user not authorized for deploy action err=%s", err.Error())
+			msg := fmt.Sprintf("user not authorized for deploy action")
 			handleForbidden(w, msg)
 			return
 		}

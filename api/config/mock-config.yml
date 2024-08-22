@@ -36,39 +36,7 @@ topology:
       hosts:
         dev-api.dev.arryved.com:
         dev-api2.dev.arryved.com:
-  prod:
-    clusters:
-    - id:
-        app: arryved-api
-        region: central
-      kind: online
-      runtime: GCE
-      repo: arryved-apt
-      hosts:
-        arryved-api0.prod.arryved.com:
-        arryved-api1.prod.arryved.com:
-        arryved-api2.prod.arryved.com:
-        arryved-api3.prod.arryved.com:
-        arryved-api4.prod.arryved.com:
-        canary-api.prod.arryved.com:
-          canary: true
-        canary-api1.prod.arryved.com:
-          canary: true
-  stg:
-    clusters:
-    - id:
-        app: poserp-app
-        region: central
-      kind: online
-      runtime: GKE
-      repo: product-docker
-    - id:
-        app: pay
-        region: central
-      kind: online
-      runtime: GKE
-      repo: product-docker
-
+authnEnabled: false
 rbacEnabled: false
 roleMemberships:
   operator:
@@ -103,3 +71,7 @@ usersByGroups:
     - urn:example:user:babs.mgr@example.com
   urn:example:group:cto-office@example.com:
     - urn:example:user:angus.cto@example.com
+
+secretsServiceAccounts:
+  - 676571955389-compute@developer.gserviceaccount.com
+  - gke-workload-hles@arryved-177921.iam.gserviceaccount.com
