@@ -201,7 +201,7 @@ func SecretsList(cfg *config.Config, client secrets.SecretManagerClient, w http.
 	}
 	httpStatus := http.StatusOK
 	log.Infof("%s %s %s %d", r.RemoteAddr, r.Method, r.URL, httpStatus)
-	log.Infof("secretEntries=%v", secretEntries)
+	log.Debugf("secretEntries=%v", secretEntries)
 	w.WriteHeader(httpStatus)
 	w.Write(responseBody)
 	return
