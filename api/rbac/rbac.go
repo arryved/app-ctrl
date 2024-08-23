@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/arryved/app-ctrl/api/config"
+	"github.com/arryved/app-ctrl/api/rbac/utility"
 	"github.com/arryved/app-ctrl/api/secrets"
 )
 
@@ -40,31 +41,10 @@ func ConfigAuthorizer(ctx context.Context, cfg *config.Config, client interface{
 	for _, entry := range cfg.AccessEntries {
 		targetStr := string(entry.Target)
 		if entry.Permission == action && (targetStr == target || targetStr == "*") {
-			if PrincipalHasRole(cfg, principal, entry.Role) {
+			if utility.PrincipalHasRole(cfg, principal, entry.Role) {
 				return nil
 			}
 		}
 	}
 	return fmt.Errorf("not authorized principal=%s action=%s target=%s", principal, action, target)
-}
-
-// UTILITY for asserting role for principal
-func PrincipalHasRole(cfg *config.Config, principal config.PrincipalUrn, role config.Role) bool {
-	for _, group := range cfg.RoleMemberships[role] {
-		if PrincipalInGroup(cfg, principal, group) {
-			return true
-		}
-	}
-	return false
-}
-
-// UTILITY for asserting group membership for principal
-func PrincipalInGroup(cfg *config.Config, principal config.PrincipalUrn, group config.GroupUrn) bool {
-	// TODO replace this with GWS group membership lookup
-	for _, p := range cfg.UsersByGroups[group] {
-		if p == principal {
-			return true
-		}
-	}
-	return false
 }

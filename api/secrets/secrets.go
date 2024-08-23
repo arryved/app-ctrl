@@ -19,6 +19,7 @@ import (
 	iampb "google.golang.org/genproto/googleapis/iam/v1"
 
 	"github.com/arryved/app-ctrl/api/config"
+	"github.com/arryved/app-ctrl/api/rbac/utility"
 )
 
 // This role is used as a hint; users with the role will be restricted to access-only in other tools, but app-control
@@ -337,10 +338,21 @@ func SecretsAuthorizer(
 		if err != nil {
 			return err
 		}
+		ownerGroup := principalMap["ownerGroup"]
+		ownerUser := principalMap["ownerUser"]
+		userUrn := config.PrincipalUrn(fmt.Sprintf("urn:arryved:user:%s", ownerUser))
+		groupUrn := config.GroupUrn(fmt.Sprintf("urn:arryved:group:%s", ownerGroup))
 		log.Infof("authorizing principal=%s action=%s target=%s", principal, action, target)
-		log.Infof("iam for secret=%s found ownerGroup=%s ownerUser=%s", secretName, principalMap["ownerGroup"], principalMap["ownerUser"])
+		log.Infof("iam for secret=%s found ownerGroup=%s ownerUser=%s", secretName, ownerGroup, ownerUser)
+		// if the principal is the owner user or the principal is the owner group, then authorize
+		if userUrn == principal || utility.PrincipalInGroup(cfg, principal, groupUrn) {
+			log.Infof("authorized principal=%s action=%s target=%s", principal, action, target)
+			return nil
+		} else {
+			return fmt.Errorf("principal=%s does not own target=%s", principal, target)
+		}
 	} else {
-		// CREATE | LIST - anyone can do these
+		// CREATE | LIST - anyone can do these (assuming they are authenticated)
 		return nil
 	}
 	return nil
