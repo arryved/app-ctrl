@@ -27,7 +27,7 @@ def status(environment, application, region, variant, canary, verbose, short):
     api_host = constants["api_hosts_by_env"][environment]
     for app in application:
         url = (f"{api_host}/{action}/{environment}/{app}/{region}/{variant}")
-        click.echo(click.style(f"Connecting to {url} ...", fg="green"))
+        click.echo(click.style(f"Connecting to {url} ...", fg="green"), err=True)
 
         with click_spinner.spinner():
             try:

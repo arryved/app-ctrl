@@ -4,12 +4,25 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "app-control"
-version = "2.3.5"
+version = "2.4.0"
 description = "app-control CLI"
 readme = "README.md"
 requires-python = ">=3.8"
 classifiers = [ "Programming Language :: Python :: 3", "Operating System :: OS Independent",]
-dependencies = [ "Click", "ansitable>=0.9", "click-spinner>=0.1", "colorama>=0.4", "pyyaml>=6", "requests", "deepmerge", "google-cloud-storage", "arpy-sso>=0.1.0", "setuptools>=61.0",]
+dependencies = [
+    "Click",
+    "ansitable>=0.9",
+    "arpy-sso>=0.1.0",
+    "click-spinner>=0.1",
+    "colorama>=0.4",
+    "deepmerge",
+    "google-cloud-storage",
+    "pwinput>=1.0.3",
+    "pytz>=2024.1",
+    "pyyaml>=6",
+    "requests",
+    "setuptools>=61.0",
+]
 [[project.authors]]
 name = "Bill West"
 email = "wwest@arryved.com"

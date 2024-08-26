@@ -12,11 +12,12 @@ from appcontrol.status import status
 from appcontrol.config import config
 from appcontrol.deploy import deploy
 from appcontrol.version import version
+from appcontrol.secrets import secrets
 
 
 def cleanup():
     check_for_updates()
-    click.echo(click.style("Cleaning up.", fg="white"), err=True)
+    click.echo(click.style("Cleaning up.", fg="cyan"), err=True)
     temp_dir = os.environ.get("APP_CONTROL_TEMP_DIR", "")
     if os.path.exists(temp_dir):
         for root, dirs, files in os.walk(temp_dir, topdown=False):
@@ -85,10 +86,11 @@ def cli():
         os.environ["REQUESTS_CA_BUNDLE"] = merge_ca()
 
 
-cli.add_command(status)
-cli.add_command(restart)
 cli.add_command(config)
 cli.add_command(deploy)
+cli.add_command(restart)
+cli.add_command(secrets)
+cli.add_command(status)
 cli.add_command(version)
 
 if __name__ == "__main__":
