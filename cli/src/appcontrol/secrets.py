@@ -63,15 +63,17 @@ def create(environment, name, group, file):
     if status_code == 5:
         error = json.loads(response.text).get("error", str(response.text))
         click.echo(click.style(f"Server experienced an error: {error}", fg="red"), err=True)
-        exit()
+        exit(1)
 
     if status_code == 4:
         error = json.loads(response.text).get("error", str(response.text))
         click.echo(click.style(f"Request error: {error}", fg="yellow"), err=True)
+        exit(2)
 
     if status_code == 2:
         click.echo(click.style(f"Secret successfully created in env={environment}", fg="green"), err=True)
         click.echo(click.style(f"{name}"), err=False)
+        exit(0)
 
 
 def is_binary(data):
@@ -107,6 +109,7 @@ def get(environment, name, file):
     if status_code == 4:
         error = json.loads(response.text).get("error", str(response.text))
         click.echo(click.style(f"Request error: {error}", fg="yellow"), err=True)
+        exit(2)
 
     if status_code == 2:
         click.echo(click.style(f"Secret urn:arryved:secret:{name} successfully fetched from env={environment}", fg="cyan"), err=True)
