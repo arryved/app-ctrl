@@ -252,76 +252,84 @@ func SecretList(ctx context.Context, client SecretManagerClient, projectNumber s
 	}
 	listIter := client.ListSecrets(ctx, req)
 
-	jobs := make(chan *smpb.Secret, listIamConcurrency)
-	results := make(chan SecretEntry, listIamConcurrency)
 	var wg sync.WaitGroup
-
-	for i := 0; i < listIamConcurrency; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for secret := range jobs {
-				ownerUser := ""
-				ownerGroup := ""
-				policy, err := client.GetIamPolicy(ctx, &iampb.GetIamPolicyRequest{Resource: secret.Name})
-				if err != nil {
-					log.Warnf("could not get policy for secret=%s, ownership not determined", secret.Name)
-				} else {
-					// only supporting one each by convention, last found of each wins
-					for _, binding := range policy.Bindings {
-						if binding.Role == accessorRole {
-							for _, member := range binding.Members {
-								if strings.HasPrefix(member, "user") {
-									ownerUser = normalizeMember(member)
-								}
-								if strings.HasPrefix(member, "group") {
-									ownerGroup = normalizeMember(member)
-								}
-							}
-						}
-					}
-				}
-				nameParts := strings.Split(secret.Name, "/")
-				urn := fmt.Sprintf("urn:arryved:secret:%s", nameParts[len(nameParts)-1])
-				result := SecretEntry{
-					Urn:            urn,
-					OwnerGroup:     ownerGroup,
-					OwnerUser:      ownerUser,
-					CreatedEpochNs: secret.CreateTime.Seconds*1e9 + int64(secret.CreateTime.Nanos),
-				}
-				if ownerUser == "" {
-					log.Warnf("secret %s has no user owner", result.Urn)
-				}
-				if ownerGroup == "" {
-					log.Warnf("secret %s has no group owner", result.Urn)
-				}
-				results <- result
-			}
-		}()
-	}
+	var mu sync.Mutex
+	jobs := make(chan struct{}, listIamConcurrency)
+	resultList := []SecretEntry{}
 
 	for {
 		secret, err := listIter.Next()
-		if err == iterator.Done {
-			break
-		}
 		if err != nil {
-			return []SecretEntry{}, err
+			if err == iterator.Done {
+				break
+			}
+			return []SecretEntry{}, fmt.Errorf("unexpected failure to read secret err=%s", err.Error())
 		}
-		jobs <- secret
-	}
-	close(jobs)
-	wg.Wait()
-	close(results)
 
-	resultList := []SecretEntry{}
-	for result := range results {
-		resultList = append(resultList, result)
+		wg.Add(1)
+		// reserve a job slot
+		jobs <- struct{}{}
+
+		go func(secret *smpb.Secret) {
+			// decrement wg and release the job slot
+			defer wg.Done()
+			defer func() { <-jobs }()
+
+			// convert the secret to a SecretEntry and thread-safely append to result list
+			result := convertGcpSecretToSecretEntry(ctx, client, secret)
+			mu.Lock()
+			resultList = append(resultList, result)
+			mu.Unlock()
+		}(secret)
 	}
+
+	wg.Wait()
+
+	// sort result list by created time, and return it
 	sort.Slice(resultList, func(i, j int) bool {
 		return resultList[i].CreatedEpochNs > resultList[j].CreatedEpochNs
 	})
 	return resultList, nil
+}
+
+func convertGcpSecretToSecretEntry(ctx context.Context, client SecretManagerClient, secret *smpb.Secret) SecretEntry {
+	log.Infof("**** secret=%s", secret.Name)
+	ownerUser := ""
+	ownerGroup := ""
+	policy, err := client.GetIamPolicy(ctx, &iampb.GetIamPolicyRequest{Resource: secret.Name})
+	if err != nil {
+		log.Warnf("could not get policy for secret=%s, ownership not determined", secret.Name)
+	} else {
+		// only supporting one each by convention, last found of each wins
+		for _, binding := range policy.Bindings {
+			if binding.Role == accessorRole {
+				// log.Infof("secret=%v binding role=%v members=%v", secret.Name, binding.Role, binding.Members)
+				for _, member := range binding.Members {
+					if strings.HasPrefix(member, "user") {
+						ownerUser = normalizeMember(member)
+					}
+					if strings.HasPrefix(member, "group") {
+						ownerGroup = normalizeMember(member)
+					}
+				}
+			}
+		}
+	}
+	nameParts := strings.Split(secret.Name, "/")
+	urn := fmt.Sprintf("urn:arryved:secret:%s", nameParts[len(nameParts)-1])
+	result := SecretEntry{
+		Urn:            urn,
+		OwnerGroup:     ownerGroup,
+		OwnerUser:      ownerUser,
+		CreatedEpochNs: secret.CreateTime.Seconds*1e9 + int64(secret.CreateTime.Nanos),
+	}
+	if ownerUser == "" {
+		log.Warnf("secret %s has no user owner", result.Urn)
+	}
+	if ownerGroup == "" {
+		log.Warnf("secret %s has no group owner", result.Urn)
+	}
+	return result
 }
 
 func SecretsAuthorizer(
