@@ -115,20 +115,18 @@ def get(environment, name, file):
             with open(file, "wb") as fh:
                 fh.write(decoded)
                 click.echo(click.style(f"Binary data written to {file}", fg="green"), err=True)
-                exit(1)
-        try:
-            if not is_binary(decoded):
-                decoded_string = decoded.decode('utf-8')
-                print(decoded_string)
                 exit(0)
-            else:
+        try:
+            if is_binary(decoded):
                 click.echo(click.style("Refusing to print binary (non-printable); use --file to dump to output", fg="yellow"), err=True)
                 exit(2)
+            else:
+                decoded_string = decoded.decode('utf-8')
+                click.echo(click.style(decoded_string, fg="white"), err=False)
+                exit(0)
         except UnicodeDecodeError:
             click.echo(click.style("Refusing to print binary (non-unicode); use --file to dump to output", fg="yellow"), err=True)
             exit(2)
-        click.echo(click.style(f"{response.text}"), err=False)
-        exit(0)
 
 
 def ns_to_human_time(ns_epoch, utc=False):
@@ -213,14 +211,16 @@ def update(environment, name, file):
     if status_code == 5:
         error = json.loads(response.text).get("error", str(response.text))
         click.echo(click.style(f"Server experienced an error: {error}", fg="red"), err=True)
-        exit()
+        exit(1)
 
     if status_code == 4:
         error = json.loads(response.text).get("error", str(response.text))
         click.echo(click.style(f"Request error: {error}", fg="yellow"), err=True)
+        exit(2)
 
     if status_code == 2:
         click.echo(click.style(f"Secret successfully created in env={environment}", fg="green"), err=True)
+        exit(0)
 
 
 @click.command()
