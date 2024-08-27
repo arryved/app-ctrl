@@ -134,7 +134,7 @@ func getInstalledVersions(cfg *config.Config) (map[string]model.Version, error) 
 		fields = strings.Split(fields[1], " ")
 		installedVersion, err := model.ParseVersion(fields[1])
 		if err != nil {
-			log.Warnf("version %s could not be parsed: %v", fields[1], err)
+			log.Debugf("version %s could not be parsed: %v", fields[1], err)
 			return statuses, err
 		}
 
@@ -160,7 +160,7 @@ func getRunningVersion(appDef config.AppDef) model.Version {
 	varzResult := varz.Check(*appDef.Varz)
 	parsedVersion, err := model.ParseVersion(varzResult.ServerInfo.Version)
 	if err != nil {
-		log.Warnf("could not parse version string %s", varzResult.ServerInfo.Version)
+		log.Debugf("could not parse version string %s", varzResult.ServerInfo.Version)
 	} else {
 		return parsedVersion
 	}

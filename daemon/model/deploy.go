@@ -53,9 +53,7 @@ func (dc *DeployCache) MarkDeployComplete(app string, err error) bool {
 		return false
 	}
 
-	// TODO remove me | debug
-	log.Infof("mark complete app=%s", app)
-
+	log.Debugf("mark complete app=%s", app)
 	deploy := dc.deploys[app]
 	deploy.CompletedAt = time.Now().Unix()
 	deploy.Err = err

@@ -34,7 +34,7 @@ func Check(healthzSpec config.Healthz) model.HealthResult {
 	url := fmt.Sprintf("%s://localhost:%d/healthz", scheme, port)
 	resp, err := client.Get(url)
 	if err != nil {
-		log.Warnf("url=%s error = %v", url, err)
+		log.Debugf("url=%s error = %v", url, err)
 		if strings.Contains(err.Error(), "HTTP response to HTTPS client") {
 			result.Unknown = true
 			return result
