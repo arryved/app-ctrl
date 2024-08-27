@@ -3,6 +3,8 @@ package cli
 import (
 	"os"
 	"os/exec"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type GenericExecutor interface {
@@ -44,6 +46,7 @@ func (e *Executor) SetArgs(args []string) {
 }
 
 func (e *Executor) Run(env *map[string]string) (string, error) {
+	log.Infof("Executor running command=%s, args=%v", e.Command, e.Args)
 	cmd := exec.Command(e.Command, e.Args...)
 	envs := map[string]string{}
 	if env != nil {

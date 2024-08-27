@@ -48,7 +48,7 @@ func Check(varzSpec config.Varz) VarzResult {
 	url := fmt.Sprintf("%s://localhost:%d/varz", scheme, port)
 	resp, err := client.Get(url)
 	if err != nil {
-		log.Warnf("Could not retrieve varz from url=%s, error=%v", url, err)
+		log.Debugf("Could not retrieve varz from url=%s, error=%v", url, err)
 		return result
 	}
 
@@ -56,7 +56,7 @@ func Check(varzSpec config.Varz) VarzResult {
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Warnf("Could not read varz body from url=%s, error=%v", url, err)
+		log.Debugf("Could not read varz body from url=%s, error=%v", url, err)
 		return result
 	}
 
