@@ -9,7 +9,8 @@ arch: "amd64"
 platform: "linux"
 
 # TODO - source version from env and/or generate programmatically
-version: "2.0.3"
+version: ${ARRYVED_BUILD_APP_VERSION}
+
 section: "default"
 priority: "extra"
 replaces: []
