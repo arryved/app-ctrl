@@ -20,25 +20,24 @@ type Client struct {
 	client *compute.Service
 	ctx    context.Context
 	Env    string
-	Region string
 }
 
 type InstanceMetadata struct {
 	Clusters []apiconfig.ClusterId `json:"clusters"`
 }
 
-func (c *Client) GetInstancesForCluster(app, variant string) (map[string]*compute.Instance, error) {
+func (c *Client) GetInstancesForCluster(app, region, variant string) (map[string]*compute.Instance, error) {
 	project := c.getGCPProjectId()
-	region := c.getGCPRegion()
+	gcpRegion := c.getGCPRegion(region)
 
 	targetClusterId := apiconfig.ClusterId{
 		App:     app,
-		Region:  c.Region,
+		Region:  region,
 		Variant: variant,
 	}
 
 	// Collect all instances in region
-	regionInfo, err := c.client.Regions.Get(project, region).Context(c.ctx).Do()
+	regionInfo, err := c.client.Regions.Get(project, gcpRegion).Context(c.ctx).Do()
 	if err != nil {
 		return map[string]*compute.Instance{}, fmt.Errorf("Failed to get region info: %s", err.Error())
 	}
@@ -48,7 +47,7 @@ func (c *Client) GetInstancesForCluster(app, variant string) (map[string]*comput
 		zoneInstances, err := c.client.Instances.List(project, zoneName).Context(c.ctx).Do()
 		instances = append(instances, zoneInstances.Items...)
 		if err != nil {
-			msg := fmt.Sprintf("error getting intances project=%s region=%s zone=%s err=%s", project, region, zoneName, err.Error())
+			msg := fmt.Sprintf("error getting instances project=%s region=%s zone=%s err=%s", project, region, zoneName, err.Error())
 			log.Errorf(msg)
 			return map[string]*compute.Instance{}, fmt.Errorf(msg)
 		}
@@ -104,7 +103,7 @@ func (c *Client) getGCPProjectId() string {
 	return projectMap[c.Env]
 }
 
-func (c *Client) getGCPRegion() string {
+func (c *Client) getGCPRegion(region string) string {
 	// TODO use a canon API/library instead of hard-coding
 	regionMap := map[string]map[string]string{
 		"demo": {
@@ -135,10 +134,10 @@ func (c *Client) getGCPRegion() string {
 			"west":    "us-west4",
 		},
 	}
-	return regionMap[c.Env][c.Region]
+	return regionMap[c.Env][region]
 }
 
-func NewClient(env, region string) *Client {
+func NewClient(env string) *Client {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	computeService, err := compute.NewService(ctx, option.WithScopes(compute.CloudPlatformScope))
@@ -150,11 +149,10 @@ func NewClient(env, region string) *Client {
 		client: computeService,
 		ctx:    ctx,
 
-		Env:    env,
-		Region: region,
+		Env: env,
 	}
 	runtime.SetFinalizer(client, func(c *Client) {
-		log.Debugf("finalizer called for GCE client env=%s region=%s", c.Env, c.Region)
+		log.Debugf("finalizer called for GCE client env=%s", c.Env)
 		c.cancel()
 	})
 

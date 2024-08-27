@@ -45,7 +45,7 @@ func main() {
 		panic(msg)
 	}
 	jobQueue := queue.NewQueue(cfg.Queue, client)
-	gceClient := gce.NewClient(cfg.Env, "us-central1")
+	gceClient := gce.NewClient(cfg.Env)
 
 	// TODO - ship logs to fluentd/log aggregation
 	// TODO - collect and expose metrics

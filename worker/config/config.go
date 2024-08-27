@@ -17,6 +17,9 @@ type Config struct {
 	// Arryved env short name
 	Env string `yaml:"env"`
 
+	// individual GCE instance deploy timeout in seconds
+	GCEDeployTimeoutS int `yaml:"gceDeployTimeout"`
+
 	// kubeconfig yaml path
 	KubeConfigPath string `yaml:"kubeConfigPath"`
 
@@ -34,6 +37,9 @@ type Config struct {
 
 	// Name of template is key, root path containing templates is value
 	AppTemplates map[string]string `yaml:"appTemplates"`
+
+	// Whether or not to keep temp directory of generated files/config; useful for debugging
+	KeepTempDir bool `yaml:"keepTempDir"`
 }
 
 func (c *Config) setDefaults() {
@@ -45,6 +51,9 @@ func (c *Config) setDefaults() {
 	}
 	if c.AppControlDPSKPath == "" {
 		c.AppControlDPSKPath = "./var/app-controld-psk"
+	}
+	if c.GCEDeployTimeoutS == 0 {
+		c.GCEDeployTimeoutS = 300
 	}
 	if c.LogLevel == "" {
 		c.LogLevel = "info"

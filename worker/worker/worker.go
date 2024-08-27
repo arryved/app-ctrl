@@ -5,19 +5,25 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"cloud.google.com/go/storage"
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/iterator"
 	yaml "gopkg.in/yaml.v3"
 
@@ -27,6 +33,7 @@ import (
 	"github.com/arryved/app-ctrl/worker/config"
 	"github.com/arryved/app-ctrl/worker/gce"
 	"github.com/arryved/app-ctrl/worker/gke"
+	appcontrold "github.com/arryved/app-ctrl/daemon/api"
 )
 
 type Worker struct {
@@ -80,6 +87,7 @@ func (w *Worker) ProcessJob(job *queue.Job) (*JobResult, error) {
 		msg := fmt.Sprintf("%s action detected for job id=%s", job.Action, job.Id)
 		log.Infof(msg)
 		return w.processDeployJob(job)
+	// TODO implement RESTART if still desired
 	//case "RESTART":
 	default:
 		msg := fmt.Sprintf("unsupported action=%s", job.Action)
@@ -385,7 +393,9 @@ func (w *Worker) processDeployJobGKE(job *queue.Job) (*JobResult, error) {
 		return &result, err
 	}
 	log.Debugf("temp dir created root=%s", tmpDir)
-	defer w.wipeTempDir(tmpDir)
+	if !w.cfg.KeepTempDir {
+		defer w.wipeTempDir(tmpDir)
+	}
 
 	// Compile app config for this target
 	arryvedDir := fmt.Sprintf("%s/.arryved", tmpDir)
@@ -405,7 +415,7 @@ func (w *Worker) processDeployJobGKE(job *queue.Job) (*JobResult, error) {
 		}
 	}
 
-	// apply the k8s non-pod resourcess (config, secrets, LB, etc); don't wait/block
+	// TODO apply the k8s non-pod resourcess (config, secrets, LB, etc) in async fashion; don't wait/block
 	//err = w.gkeApplySupportingResources(k8sDir, request)
 	//if err != nil {
 	//    log.Infof("error encountered during apply/redeploy of supporting resources err=%s", err.Error())
@@ -440,24 +450,129 @@ func (w *Worker) processDeployJobGCE(job *queue.Job) (*JobResult, error) {
 	}
 	request := job.Request.(*queue.DeployJobRequest)
 	app := request.Cluster.Id.App
+	region := request.Cluster.Id.Region
 	variant := request.Cluster.Id.Variant
+	version := request.Version
 
 	// get all instances for cluster
-	instanceMap, err := w.compute.GetInstancesForCluster(app, variant)
+	instanceMap, err := w.compute.GetInstancesForCluster(app, region, variant)
 	if err != nil {
-		msg := fmt.Sprintf("Unexpected error when looking for target instances app=%s, variant=%s", app, variant)
+		msg := fmt.Sprintf("Unexpected error looking for target instances app=%s, region=%s variant=%s, err=%s", app, region, variant, err.Error())
 		log.Error(msg)
 		result.Detail = msg
 		return &result, fmt.Errorf(msg)
 	}
-	log.Infof("Deployment with concurrency of %v requested against GCE instances=%v", request.Concurrency, instanceMap)
 
-	// request app-controld deploy
+	batchCount := w.concurrencyToBatchCount(request.Concurrency, len(instanceMap))
+	log.Infof("Deployment with concurrency of %d nodes requested against total of %d GCE instances", batchCount, len(instanceMap))
 
-	// TODO parallelize only up to the requested concurrency
+	// parallelize app-controld deploys only up to the requested concurrency's batchCount
+	var wg sync.WaitGroup
+	ch := make(chan struct{}, batchCount)
+	for name, instance := range instanceMap {
+		wg.Add(1)
+		go func(name string, instance *compute.Instance) {
+			defer wg.Done()
+			// reserve a channel position
+			ch <- struct{}{}
+			defer func() {
+				// release the channel position
+				<-ch
+			}()
+
+			// set up timeout context
+			ctx, cancel := context.WithTimeout(context.Background(), time.Duration(w.cfg.GCEDeployTimeoutS)*time.Second)
+			defer cancel()
+
+			// kick off the deployment
+			log.Infof("starting deployment on instance %s for app=%s region=%s variant=%s version=%s", name, app, region, variant, version)
+			w.gceDeploy(ctx, name, instance, version)
+			//result, err := w.gceDeploy(ctx, name, instance)
+			log.Infof("finished deployment for %s", name)
+		}(name, instance)
+	}
+	wg.Wait()
 	// TODO return a job result w/ details as reported by app-controld (failed|succeeded)
-	log.Errorf("processDeployJobGCE not yet implemented job id=%s result=%v, request=%v", job.Id, result, request)
 	return nil, nil
+}
+
+func (w *Worker) concurrencyToBatchCount(concurrency string, total int) int {
+	if strings.Contains(concurrency, "%") {
+		percentage, err := strconv.Atoi(strings.TrimSuffix(concurrency, "%"))
+		if err != nil {
+			log.Fatal(err)
+		}
+		return int(math.Floor(float64(total) * float64(percentage) / 100))
+	} else {
+		batchCount, err := strconv.Atoi(concurrency)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return batchCount
+	}
+}
+
+func (w *Worker) gceDeploy(ctx context.Context, name string, instance *compute.Instance, version string) *appcontrold.DeployResult {
+	ch := make(chan appcontrold.DeployResult, 1)
+
+	go func(ctx context.Context, ch chan appcontrold.DeployResult) {
+		log.Infof("processing deploy job for instance name=%s", name)
+		result := appcontrold.DeployResult{}
+		psk := fmt.Sprintf("Bearer %s", readPSKFromPath(w.cfg.AppControlDPSKPath))
+		// TODO replace app name, verify variant comes from metadata on app-controld host
+		url := fmt.Sprintf("%s://%s:%d/deploy?app=arryved-api&version=%s", w.cfg.AppControlDScheme, name, w.cfg.AppControlDPort, version)
+		// TODO fix by including/referencing CA cert and issuing certs with the correct hostnames on all app-controld targets
+		client := &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true,
+				},
+			},
+		}
+		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			msg := fmt.Sprintf("Failed to execute /deploy request to app-controld on instance=%s, err=%v", name, err)
+			log.Warn(msg)
+			result.Err = msg
+			ch <- result
+		}
+		req.Header.Set("Authorization", psk)
+
+		resp, err := client.Do(req)
+		if err != nil {
+			msg := fmt.Sprintf("Failed to execute /deploy request to app-controld on instance=%s, err=%v", name, err)
+			log.Warn(msg)
+			result.Err = msg
+			ch <- result
+		}
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			msg := fmt.Sprintf("Failed body read on /status request to app-controld on instance=%s, err=%v", name, err)
+			log.Warn(msg)
+			result.Err = msg
+			ch <- result
+		}
+		err = json.Unmarshal(body, &result)
+		if err != nil {
+			msg := fmt.Sprintf("Failed to unmarshal response from app-controld on instance=%s, body=%v, err=%v", name, string(body), err)
+			log.Warn(msg)
+			result.Err = msg
+			ch <- result
+		}
+		log.Infof("finished deploy job for instance %v, result=%v", name, result)
+		ch <- result
+	}(ctx, ch)
+
+	// wait for completion or timeout
+	select {
+	case <-ctx.Done():
+		msg := fmt.Sprintf("Deployment for instance %s timed out\n", instance.Name)
+		log.Warn(msg)
+		return &appcontrold.DeployResult{Err: msg}
+	case result := <-ch:
+		log.Infof("Deployment for instance finished result=%v", result)
+		return &result
+	}
 }
 
 // check if .arryved/.gke has directories
@@ -509,13 +624,22 @@ func (w *Worker) kubeResourceDefsPresent(arryvedDir string) bool {
 //    return outputPath, nil
 //}
 
-func readFileAsString(filename string) string {
-	data, err := ioutil.ReadFile(filename)
+//func readFileAsString(filename string) string {
+//    data, err := ioutil.ReadFile(filename)
+//    if err != nil {
+//        log.Warnf("could not open file=%s", filename)
+//        return ""
+//    }
+//    return string(data)
+//}
+
+func readPSKFromPath(pskPath string) string {
+	pskFromFile, err := ioutil.ReadFile(pskPath)
 	if err != nil {
-		log.Warnf("could not open file=%s", filename)
+		log.Warnf("couldn't read PSK from path=%s", pskPath)
 		return ""
 	}
-	return string(data)
+	return strings.TrimSpace(string(pskFromFile))
 }
 
 func New(cfg *config.Config, jobQueue *queue.Queue, compute *gce.Client) *Worker {

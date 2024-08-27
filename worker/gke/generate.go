@@ -89,6 +89,7 @@ func GenerateFromTemplate(cfg *config.Config, compiledConfigPath, arryvedDir str
 	log.Infof("generated k8s resource defs from templates; appName=%s, kind=%v", appName, kind)
 	return err
 }
+
 func generateOnlineResources(env, templatePath, arryvedDir, compiledConfigPath, version, gkeServiceAccount string, appConfig productconfig.AppConfig) error {
 	k8sDir := fmt.Sprintf("%s/.gke/%s", arryvedDir, env)
 	controlScriptPath := fmt.Sprintf("%s/control", arryvedDir)
