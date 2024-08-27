@@ -18,7 +18,7 @@ deps:
 	go mod tidy
 
 test: deps
-	  go test -v -count=1 -coverprofile=coverage.out ./...
+	go test -v -count=1 -coverprofile=coverage.out ./...
 
 coverage: test
 	go tool cover -html=coverage.out
