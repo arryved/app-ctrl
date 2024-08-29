@@ -13,6 +13,29 @@ import (
 	"github.com/arryved/app-ctrl/daemon/config"
 )
 
+type MockOORExecutor struct {
+	cmd  string
+	args []string
+}
+
+func (ex *MockOORExecutor) SetCommand(cmd string) {
+	ex.cmd = cmd
+}
+
+func (ex *MockOORExecutor) SetArgs(args []string) {
+	ex.args = args
+}
+
+func (ex *MockOORExecutor) Run(inputMap *map[string]string) (string, error) {
+	path := ex.args[3]
+	f, err := os.Create(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	return "", nil
+}
+
 func mockVarzListener() int {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/varz", func(w http.ResponseWriter, r *http.Request) {
@@ -67,7 +90,8 @@ func TestGetStatuses(t *testing.T) {
 	assert.False(statuses["arryved-merchant"].Health[0].OOR)
 
 	// take arryved-merchant out of rotation (OOR) and try again
-	err = SetOOR(cfg.AppDefs["arryved-merchant"])
+	ex := &MockOORExecutor{}
+	err = SetOOR(ex, cfg.AppDefs["arryved-merchant"])
 	assert.Nil(err)
 	statuses, err = GetStatuses(cfg)
 

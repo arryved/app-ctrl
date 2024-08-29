@@ -5,6 +5,7 @@ go 1.21
 toolchain go1.22.0
 
 require (
+	cloud.google.com/go/secretmanager v1.13.5
 	cloud.google.com/go/storage v1.43.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.9.0
@@ -24,7 +25,6 @@ require (
 	cloud.google.com/go/longrunning v0.5.11 // indirect
 	cloud.google.com/go/pubsub v1.40.0 // indirect
 	cloud.google.com/go/resourcemanager v1.9.12 // indirect
-	cloud.google.com/go/secretmanager v1.13.5 // indirect
 	github.com/coreos/go-oidc v2.2.1+incompatible // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect

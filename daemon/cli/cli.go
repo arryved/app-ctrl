@@ -233,6 +233,26 @@ func FixupFilePermissions(executor GenericExecutor, targetPath string) error {
 	return nil
 }
 
+func RemoveFile(executor GenericExecutor, filePath string) error {
+	log.Infof("rm file at filePath=%s", filePath)
+	executor.SetCommand("sudo")
+	executor.SetArgs(append([]string{
+		"-u",
+		"arryved",
+		"/usr/bin/rm",
+		"-f",
+		filePath,
+	}))
+	output, err := executor.Run(&map[string]string{})
+	if err != nil {
+		log.Errorf("rm failed for file at filePath=%s err=%s", filePath, err.Error())
+		log.Debugf("rm output=%v", output)
+		return err
+	}
+	log.Infof("rm succeeded for file at filePath=%s", filePath)
+	return nil
+}
+
 func FixupOwnership(executor GenericExecutor, targetPath string) error {
 	log.Infof("chown arryved.arryved started for targetPath=%s", targetPath)
 	executor.SetCommand("sudo")
@@ -270,12 +290,52 @@ func CopyFileAs(executor GenericExecutor, user, src, dst string) error {
 	output, err := executor.Run(&map[string]string{})
 	if err != nil {
 		log.Errorf("copy file failed src=%s dst=%s err=%s", src, dst, err.Error())
-		log.Debugf("copy file output==%v", output)
+		log.Debugf("copy file output=%v", output)
 		return err
 	}
 	log.Infof("copy file succeeded src=%s dst=%s", src, dst)
 	return nil
+}
 
+func CopyDirRecurse(executor GenericExecutor, user, srcPath, dstPath string) error {
+	log.Infof("cp -r srcPath=%s dstPath=%s", srcPath, dstPath)
+	executor.SetCommand("sudo")
+	executor.SetArgs(append([]string{
+		"-u",
+		user,
+		"cp",
+		"-r",
+		srcPath,
+		dstPath,
+	}))
+	output, err := executor.Run(&map[string]string{})
+	if err != nil {
+		log.Errorf("cp -r srcPath=%s dstPath=%s, err=%s", srcPath, dstPath, err.Error())
+		log.Debugf("cp -r output=%v", output)
+		return err
+	}
+	log.Infof("cp -r succeeded srcPath=%s dstPath=%s", srcPath, dstPath)
+	return nil
+}
+
+func TouchFile(executor GenericExecutor, filePath string) error {
+	log.Infof("touch filePath=%s", filePath)
+	executor.SetCommand("sudo")
+	executor.SetArgs(append([]string{
+		"-u",
+		"arryved",
+		"/usr/bin/touch",
+		filePath,
+	}))
+	output, err := executor.Run(&map[string]string{})
+	if err != nil {
+		log.Errorf("touch filePath=%s, err=%s", filePath, err.Error())
+		// TODO make debug
+		log.Errorf("touch output=%v", output)
+		return err
+	}
+	log.Infof("touch succeeded for filePath=%s", filePath)
+	return nil
 }
 
 // TODO temporary measure; remove when we sync app names with their systemd unit names

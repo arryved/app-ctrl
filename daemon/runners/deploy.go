@@ -20,12 +20,14 @@ import (
 
 	apiconfig "github.com/arryved/app-ctrl/api/config"
 	productconfig "github.com/arryved/app-ctrl/api/config/product"
+	"github.com/arryved/app-ctrl/api/gce"
+	secrets "github.com/arryved/app-ctrl/api/secrets"
 	"github.com/arryved/app-ctrl/daemon/cli"
 	"github.com/arryved/app-ctrl/daemon/config"
 	"github.com/arryved/app-ctrl/daemon/model"
 )
 
-func DeployRunner(cfg *config.Config, cache *model.DeployCache, executor *cli.Executor) {
+func DeployRunner(cfg *config.Config, secretsClient secrets.SecretManagerClient, cache *model.DeployCache, executor *cli.Executor) {
 	for {
 		// insert pause to prevent hard busy-wait
 		log.Debugf("Deploy runner going to sleep for %d seconds", cfg.DeployIntervalS)
@@ -59,7 +61,7 @@ func DeployRunner(cfg *config.Config, cache *model.DeployCache, executor *cli.Ex
 		// Set OOR for all targets
 		for _, target := range aptTargets {
 			app, _ := targetComponents(target)
-			SetOOR(cfg.AppDefs[app])
+			SetOOR(executor, cfg.AppDefs[app])
 		}
 
 		// Run install on combined list of desired packages + versions.
@@ -69,13 +71,13 @@ func DeployRunner(cfg *config.Config, cache *model.DeployCache, executor *cli.Ex
 		//       per machine. If batching is causing problems, reduce cfg.DeployIntervalS and/or
 		//       add splay when kicking off multiple app deployments.
 		log.Infof("Deploying the latest desired app=version set=%v", aptTargets)
-		err := aptInstallAndRestart(cfg, aptTargets, executor)
+		err := aptInstallAndRestart(cfg, secretsClient, aptTargets, executor)
 		log.Infof("Deploy finished; err=%v", err)
 
 		// Unset OOR for all targets (generally safe since the LB won't add the node back if the health check fails)
 		for _, target := range aptTargets {
 			app, _ := targetComponents(target)
-			UnsetOOR(cfg.AppDefs[app])
+			UnsetOOR(executor, cfg.AppDefs[app])
 		}
 
 		// update deploys map with completion time and err for each app targeted in this loop
@@ -94,7 +96,7 @@ func targetComponents(target string) (string, string) {
 	return list[0], list[1]
 }
 
-func aptInstallAndRestart(cfg *config.Config, aptTargets []string, executor *cli.Executor) error {
+func aptInstallAndRestart(cfg *config.Config, secretsClient secrets.SecretManagerClient, aptTargets []string, executor *cli.Executor) error {
 	log.Infof("Installing and restarting apt package for targets=%v", aptTargets)
 	err := cli.AptUpdate(executor)
 	if err != nil {
@@ -110,7 +112,7 @@ func aptInstallAndRestart(cfg *config.Config, aptTargets []string, executor *cli
 		return fmt.Errorf(msg)
 	}
 
-	err = pullAndMergeConfigs(executor, cfg, aptTargets)
+	err = pullAndMergeConfigs(executor, cfg, secretsClient, aptTargets)
 	if err != nil {
 		msg := fmt.Sprintf("Pull or merge of one or more configs failed err=%v", err)
 		log.Errorf(msg)
@@ -133,7 +135,7 @@ func aptInstallAndRestart(cfg *config.Config, aptTargets []string, executor *cli
 	return nil
 }
 
-func pullAndMergeConfigs(executor *cli.Executor, cfg *config.Config, targets []string) error {
+func pullAndMergeConfigs(executor *cli.Executor, cfg *config.Config, secretsClient secrets.SecretManagerClient, targets []string) error {
 	log.Infof("Pulling and merging configs for targets=%v", targets)
 	for _, target := range targets {
 		// get clusterId from VM metadata
@@ -200,7 +202,115 @@ func pullAndMergeConfigs(executor *cli.Executor, cfg *config.Config, targets []s
 			msg := fmt.Sprintf("error merging config err=%s", err.Error())
 			return fmt.Errorf(msg)
 		}
+		// Extract files (anything not included in tarball has either inline contents or a secret urn
+		err = extractFiles(executor, secretsClient, targetPath)
+		if err != nil {
+			msg := fmt.Sprintf("error extracting files from config err=%s", err.Error())
+			return fmt.Errorf(msg)
+		}
 	}
+	return nil
+}
+
+func extractFiles(executor *cli.Executor, secretsClient secrets.SecretManagerClient, targetPath string) error {
+	// get projectId for secrets fetching
+	projectIdBytes, err := getMetadata("project/project-id")
+	if err != nil {
+		return fmt.Errorf("metadata fetch failed for project/project-id err=%s", err.Error())
+	}
+	projectNumber, err := gce.GetProjectNumber(string(projectIdBytes))
+	if err != nil {
+		return fmt.Errorf("error getting a project number: err=%s", err.Error())
+	}
+	log.Debugf("project number=%s", projectNumber)
+
+	// read in config yaml
+	configFilePath := filepath.Join(targetPath, "config.yaml")
+	yamlBytes, err := ioutil.ReadFile(configFilePath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var appConfig productconfig.AppConfig
+	err = yaml.Unmarshal(yamlBytes, &appConfig)
+	if err != nil {
+		return fmt.Errorf("error unmarshaling config: err=%s", err.Error())
+	}
+
+	// extract files from config
+	tmpDir, err := ioutil.TempDir("", "config_tmpdir_")
+	// chmod the dir so arryved can see it
+	if err := os.Chmod(tmpDir, 0750); err != nil {
+		return fmt.Errorf("failed to set dir permissions: %s", err.Error())
+	}
+	defer os.RemoveAll(tmpDir)
+
+	filesMap := map[string]productconfig.Schemaless{}
+	files, ok := appConfig.Other["files"]
+	if ok {
+		filesMap = files.Value.(map[string]productconfig.Schemaless)
+	}
+	log.Debugf("filesMap=%v", filesMap)
+	for relativePath, value := range filesMap {
+		content := value.Value.(string)
+		outPath := filepath.Join(tmpDir, relativePath)
+		log.Infof("outPath=%s content=(%s)", outPath, content)
+		secretMatcher := regexp.MustCompile(`\$\{urn:arryved:secret:(.+)\}`)
+		match := secretMatcher.FindStringSubmatch(content)
+		if len(match) > 0 {
+			// in this case, try to fetch the secret at the urn and write it to the file
+			secretId := match[1]
+			secretBytes, err := secrets.SecretRead(context.Background(), secretsClient, projectNumber, secretId)
+			if err != nil {
+				log.Warnf("failed to fetch secretId=%s, files extract is incomplete, err=%s", secretId, err.Error())
+				continue
+			}
+			err = writeToFile(executor, outPath, targetPath, secretBytes)
+			if err != nil {
+				log.Warnf("failed to write secretId=%s to file=%s, files extract is incomplete, err=%s", secretId, outPath, err.Error())
+				continue
+			}
+			log.Infof("dumped secret=%s to path=%s", secretId, outPath)
+		} else {
+			// in this case, just write the inline content to the file
+			err := writeToFile(executor, outPath, targetPath, []byte(content))
+			if err != nil {
+				log.Warnf("failed to write value to file=%s, files extract is incomplete, err=%s", outPath, err.Error())
+				continue
+			}
+			log.Infof("dumped inline value to path=%s", outPath)
+		}
+	}
+
+	// change group of the tmpDir and file to "arryved"
+	chgrp(tmpDir, "arryved")
+
+	// chmod the dir and file so arryved can read
+	if err := os.Chmod(tmpDir, 0750); err != nil {
+		return fmt.Errorf("failed to set dir permissions: %s", err.Error())
+	}
+	// have arryved user copy the file to the targetDir using recursive, incl dotfiles
+	err = cli.CopyDirRecurse(executor, "arryved", tmpDir+"/.", targetPath)
+	if err != nil {
+		return fmt.Errorf("error copying tmpDir=%s to targetPath=%s err=%s", tmpDir, targetPath, err.Error())
+	}
+	log.Infof("extracted all files for targetPath=%s", targetPath)
+	return nil
+}
+
+func writeToFile(executor cli.GenericExecutor, tmpPath, targetPath string, data []byte) error {
+	// Create the directory and all necessary parents
+	dir := filepath.Dir(tmpPath)
+	err := os.MkdirAll(dir, os.ModePerm)
+	if err != nil {
+		return fmt.Errorf("failed to create directories: %w", err)
+	}
+	// Write data to the file
+	err = os.WriteFile(tmpPath, data, 0640)
+	if err != nil {
+		return fmt.Errorf("failed to write to file: %w", err)
+	}
+	// chgrp file
+	chgrp(tmpPath, "arryved")
 	return nil
 }
 
@@ -299,7 +409,6 @@ func readFileAsString(path string) string {
 	return string(content)
 }
 
-// TODO dedup with other products and put this logic in app-control-api
 func getConfigBall(clusterId apiconfig.ClusterId, version string) ([]byte, error) {
 	ctx := context.Background()
 	client, err := storage.NewClient(ctx)
@@ -368,7 +477,6 @@ func getConfigBall(clusterId apiconfig.ClusterId, version string) ([]byte, error
 	return data, nil
 }
 
-// TODO dedup with other products and put this logic in app-control-api
 func expandConfigBall(executor *cli.Executor, configBall []byte, app, targetPath string) error {
 	// first, drop the configBall on disk in a tmp dir
 	tmpDir, err := ioutil.TempDir("", "config_tmpdir_")
@@ -382,15 +490,36 @@ func expandConfigBall(executor *cli.Executor, configBall []byte, app, targetPath
 		return fmt.Errorf("failed to drop tarball err=%s", err.Error())
 	}
 
+	// get a list of the current config-app=*tar.gz files for removal
+	var fileList, toDelete []os.DirEntry
+	fileList, err = os.ReadDir(targetPath)
+	if err != nil {
+		log.Warnf("could not list files in targetPath=%s", targetPath)
+		fileList = []os.DirEntry{}
+	}
+	for _, file := range fileList {
+		if strings.Contains(file.Name(), "config-app=") && strings.HasSuffix(file.Name(), ".tar.gz") {
+			toDelete = append(toDelete, file)
+		}
+	}
+
 	// run tar extract as root to expand into the targetPath
 	err = cli.ExpandConfigTarAsRoot(executor, filePath, targetPath)
 	if err != nil {
 		return fmt.Errorf("failed to expand tarball err=%s", err.Error())
 	}
+
+	// clean up old config-app= files
+	for _, entry := range toDelete {
+		path := filepath.Join(targetPath, entry.Name())
+		err := cli.RemoveFile(executor, path)
+		if err != nil {
+			log.Warnf("could not remove directory entry=%s, err=%s", entry.Name(), err.Error())
+		}
+	}
 	return nil
 }
 
-// TODO dedup with other products and put this logic in app-control-api
 func dropConfigBall(configBall []byte, tmpDir, app string) (string, error) {
 	// drop configBall in a tempDir for sudo-based expansion
 	filePath := fmt.Sprintf("%s/%s-configBall.tar.gz", tmpDir, app)
