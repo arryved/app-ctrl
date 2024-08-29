@@ -76,11 +76,10 @@ func (c *Client) GetInstancesForCluster(app, region, variant string) (map[string
 				log.Debugf("unmarshaled metadata instance=%s metadata=%v", instance.Name, metadata)
 				for _, id := range metadata.Clusters {
 					if id == targetClusterId {
-						log.Infof("cluster id=%s", id)
+						log.Infof("found instance=%s in cluster, id=%v, targetId=%v", instance.Name, id, targetClusterId)
+						instancesInCluster[instance.Name] = instance
 					}
 				}
-				log.Infof("found instance=%s in cluster", instance.Name)
-				instancesInCluster[instance.Name] = instance
 			}
 		}
 	}

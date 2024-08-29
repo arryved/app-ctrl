@@ -486,9 +486,8 @@ func (w *Worker) processDeployJobGCE(job *queue.Job) (*JobResult, error) {
 
 			// kick off the deployment
 			log.Infof("starting deployment on instance %s for app=%s region=%s variant=%s version=%s", name, app, region, variant, version)
-			w.gceDeploy(ctx, name, instance, version)
-			//result, err := w.gceDeploy(ctx, name, instance)
-			log.Infof("finished deployment for %s", name)
+			result := w.gceDeploy(ctx, instance, request.Cluster.Id, version)
+			log.Infof("finished deployment for=%s, result=%v", name, result)
 		}(name, instance)
 	}
 	wg.Wait()
@@ -512,15 +511,17 @@ func (w *Worker) concurrencyToBatchCount(concurrency string, total int) int {
 	}
 }
 
-func (w *Worker) gceDeploy(ctx context.Context, name string, instance *compute.Instance, version string) *appcontrold.DeployResult {
+func (w *Worker) gceDeploy(ctx context.Context, instance *compute.Instance, clusterId apiconfig.ClusterId, version string) *appcontrold.DeployResult {
 	ch := make(chan appcontrold.DeployResult, 1)
+	app := clusterId.App
+	variant := clusterId.Variant
 
 	go func(ctx context.Context, ch chan appcontrold.DeployResult) {
-		log.Infof("processing deploy job for instance name=%s", name)
+		log.Infof("processing deploy job for instance=%s", instance.Name)
 		result := appcontrold.DeployResult{}
 		psk := fmt.Sprintf("Bearer %s", readPSKFromPath(w.cfg.AppControlDPSKPath))
-		// TODO replace app name, verify variant comes from metadata on app-controld host
-		url := fmt.Sprintf("%s://%s:%d/deploy?app=arryved-api&version=%s", w.cfg.AppControlDScheme, name, w.cfg.AppControlDPort, version)
+		url := fmt.Sprintf("%s://%s:%d/deploy?app=%s&variant=%s&version=%s",
+			w.cfg.AppControlDScheme, instance.Name, w.cfg.AppControlDPort, app, variant, version)
 		// TODO fix by including/referencing CA cert and issuing certs with the correct hostnames on all app-controld targets
 		client := &http.Client{
 			Transport: &http.Transport{
@@ -531,7 +532,7 @@ func (w *Worker) gceDeploy(ctx context.Context, name string, instance *compute.I
 		}
 		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
-			msg := fmt.Sprintf("Failed to execute /deploy request to app-controld on instance=%s, err=%v", name, err)
+			msg := fmt.Sprintf("Failed to execute /deploy request to app-controld on instance=%s, err=%v", instance.Name, err)
 			log.Warn(msg)
 			result.Err = msg
 			ch <- result
@@ -540,26 +541,26 @@ func (w *Worker) gceDeploy(ctx context.Context, name string, instance *compute.I
 
 		resp, err := client.Do(req)
 		if err != nil {
-			msg := fmt.Sprintf("Failed to execute /deploy request to app-controld on instance=%s, err=%v", name, err)
+			msg := fmt.Sprintf("Failed to execute /deploy request to app-controld on instance=%s, err=%v", instance.Name, err)
 			log.Warn(msg)
 			result.Err = msg
 			ch <- result
 		}
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			msg := fmt.Sprintf("Failed body read on /status request to app-controld on instance=%s, err=%v", name, err)
+			msg := fmt.Sprintf("Failed body read on /status request to app-controld on instance=%s, err=%v", instance.Name, err)
 			log.Warn(msg)
 			result.Err = msg
 			ch <- result
 		}
 		err = json.Unmarshal(body, &result)
 		if err != nil {
-			msg := fmt.Sprintf("Failed to unmarshal response from app-controld on instance=%s, body=%v, err=%v", name, string(body), err)
+			msg := fmt.Sprintf("Failed to unmarshal response from app-controld on instance=%s, body=%v, err=%v", instance.Name, string(body), err)
 			log.Warn(msg)
 			result.Err = msg
 			ch <- result
 		}
-		log.Infof("finished deploy job for instance %v, result=%v", name, result)
+		log.Infof("finished deploy job for instance %v, result=%v", instance.Name, result)
 		ch <- result
 	}(ctx, ch)
 
