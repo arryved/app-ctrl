@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/arryved/app-ctrl/daemon/cli"
 	"github.com/arryved/app-ctrl/daemon/config"
 )
 
@@ -19,25 +20,22 @@ func isOOR(appDef config.AppDef) bool {
 	return true
 }
 
-func SetOOR(appDef config.AppDef) error {
+func SetOOR(executor cli.GenericExecutor, appDef config.AppDef) error {
 	root := appDef.AppRoot
 	path := fmt.Sprintf("%s/%s", root, oorFilename)
-	file, err := os.Create(path)
+	err := cli.TouchFile(executor, path)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
-
 	return nil
 }
 
-func UnsetOOR(appDef config.AppDef) error {
+func UnsetOOR(executor cli.GenericExecutor, appDef config.AppDef) error {
 	root := appDef.AppRoot
 	path := fmt.Sprintf("%s/%s", root, oorFilename)
-	err := os.Remove(path)
+	err := cli.RemoveFile(executor, path)
 	if err != nil {
 		return err
 	}
-
 	return nil
 }

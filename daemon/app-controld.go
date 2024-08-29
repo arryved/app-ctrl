@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"flag"
 
+	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/arryved/app-ctrl/daemon/api"
@@ -44,9 +46,17 @@ func main() {
 	// CLI executor
 	executor := &cli.Executor{}
 
+	// get a secret client to inject
+	smClient, err := secretmanager.NewClient(context.Background())
+	if err != nil {
+		log.Fatalf("error getting a secret client: err=%s", err.Error())
+		return
+	}
+	defer smClient.Close()
+
 	// start background runners
 	go runners.StatusRunner(cfg, statusCache)
-	go runners.DeployRunner(cfg, deployCache, executor)
+	go runners.DeployRunner(cfg, smClient, deployCache, executor)
 
 	// start app-controld API
 	api := api.New(cfg, statusCache, deployCache)
