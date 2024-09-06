@@ -62,13 +62,13 @@ def check_for_updates():
     click.echo(click.style("Checking for updates...", fg="white"), err=True)
     try:
         result = subprocess.run(
-            ['pip', 'install', 'app-control', '--upgrade', '--dry-run'],
+            ['pipx', 'runpip', 'app-control', 'install', 'app-control', '--upgrade', '--dry-run'],
             capture_output=True,
             text=True,
             check=True
         )
         if 'Would install app-control' in result.stdout:
-            click.echo(click.style("An update is available for app-control; use \"pip install -U app-control\" to update", fg="yellow"), err=True)
+            click.echo(click.style("An update is available for app-control; use \"pipx upgrade app-controll\" to update", fg="yellow"), err=True)
         else:
             click.echo(click.style("app-control is up-to-date", fg="green"), err=True)
     except subprocess.CalledProcessError as e:
