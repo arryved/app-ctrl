@@ -210,8 +210,7 @@ def generate_files_from_config(app_dir, temp_dir):
     """ tar up the files needed for config, including any embedded files;
         verifies on-disk files are present
     """
-    # copy the control file
-    _copy_file(f"{app_dir}/.arryved/control", f"{temp_dir}/control")
+    # get all config file refs to copy them into the tarball
     files = _get_all_file_refs_from_configs(f"{app_dir}/.arryved/config")
 
     # for all files under the files key, create required subdirs in temp_dir
@@ -338,8 +337,8 @@ def config(environment, region, variant, version, compile):
             else:
                 click.echo(click.style(f"Pushing config object {object_name} to repo", fg="blue"))
                 with tempfile.TemporaryDirectory() as temp_dir:
-                    generate_files_from_config(config_spec, arryved_dir, temp_dir)
-                    copy_tree(f"{arryved_dir}/config", f"{temp_dir}/config")
+                    generate_files_from_config(".", temp_dir)
+                    copy_tree(f"{arryved_dir}", f"{temp_dir}/.arryved")
                     tarball_path = create_tarball(object_name, temp_dir)
                     push_config_artifact(storage.Client(), tarball_path)
         except Exception as e:
