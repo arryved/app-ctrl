@@ -25,7 +25,9 @@ func (c *GCECache) Get() map[config.ClusterId][]*compute.Instance {
 func (c *GCECache) Set(newData map[config.ClusterId][]*compute.Instance) error {
 	c.Lock()
 	defer c.Unlock()
-	c.data = newData
+	for k, v := range newData {
+		c.data[k] = v
+	}
 	return nil
 }
 

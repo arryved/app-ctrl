@@ -4,6 +4,7 @@ import (
 	"flag"
 	"os"
 
+	joonix "github.com/joonix/log"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/arryved/app-ctrl/api/api"
@@ -14,6 +15,11 @@ import (
 const (
 	config_path_default = "/usr/local/etc/app-control-api.yml"
 )
+
+func init() {
+	// Log as JSON instead of the default ASCII formatter.
+	log.SetFormatter(joonix.NewFormatter())
+}
 
 func main() {
 	configPath := flag.String("config", config_path_default, "path to config file")

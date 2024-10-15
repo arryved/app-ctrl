@@ -15,6 +15,7 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/google/uuid v1.6.0
 	github.com/googleapis/gax-go/v2 v2.13.0
+	github.com/joonix/log v0.0.0-20230221083239-7988383bab32
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.9.0
 	google.golang.org/api v0.191.0

@@ -54,7 +54,7 @@ func (c *Client) GetRegionAppControlInstances() (map[config.ClusterId][]*compute
 		zoneName := zone[strings.LastIndex(zone, "/")+1:]
 		zoneInstances, err := c.client.Instances.List(project, zoneName).Context(c.ctx).Do()
 		if err != nil {
-			msg := fmt.Sprintf("error getting intances project=%s region=%s zone=%s err=%s", project, region, zoneName, err.Error())
+			msg := fmt.Sprintf("error getting instances project=%s region=%s zone=%s err=%s", project, region, zoneName, err.Error())
 			log.Errorf(msg)
 			return appControlInstances, fmt.Errorf(msg)
 		}
