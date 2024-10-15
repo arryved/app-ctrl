@@ -53,3 +53,9 @@ tags
 
 app-control-api
 build/
+
+# Ignore generated credentials from google-github-actions/auth https://github.com/google-github-actions/auth/blob/main/README.md#prerequisites
+gha-creds-*.json
+
+# Ignore dist directory
+dist/
