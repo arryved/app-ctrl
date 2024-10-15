@@ -17,7 +17,6 @@ require (
 	github.com/googleapis/gax-go/v2 v2.13.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.9.0
-	github.com/arryved/app-ctrl/daemon v0.0.0-20240314152851-edfcb5fcd12d
 	google.golang.org/api v0.191.0
 	google.golang.org/genproto v0.0.0-20240730163845-b1a4ccb954bf
 	google.golang.org/protobuf v1.34.2

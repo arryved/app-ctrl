@@ -21,8 +21,8 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/arryved/app-ctrl/api/config"
+	"github.com/arryved/app-ctrl/api/model"
 	"github.com/arryved/app-ctrl/api/runners"
-	"github.com/arryved/app-ctrl/daemon/model"
 )
 
 type HttpClient interface {
