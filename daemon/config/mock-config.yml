@@ -1,0 +1,80 @@
+# This config is used for testing; keep real config in ansible
+---
+logLevel: debug
+convergeTimeoutS: 10
+pollIntervalS: 5
+readTimeoutS: 30
+writeTimeoutS: 10
+
+tls:
+  ciphers:
+    - TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA
+    - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+    - TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA
+    - TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA
+    - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+    - TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA
+    - TLS_RSA_WITH_AES_128_CBC_SHA
+    - TLS_RSA_WITH_AES_256_CBC_SHA
+  minVersion: "1.2"
+
+aptPath: "./api/mock_apt"
+
+appDefs:
+  arryved-api:
+    root: /export/hda3/arryved
+    type: ONLINE
+    healthz:
+      - port: 10010
+      - port: 10011
+        tls: true
+    varz:
+      port: 10010
+  arryved-customer:
+    root: /export/hda3/customer
+    type: UNKNOWN
+  arryved-insider:
+    root: /export/hda3/insider
+    type: ONLINE
+    healthz:
+      - port: 10998
+      - port: 10999
+        tls: true
+    varz:
+      port: 10998
+  arryved-integration:
+    root: /export/hda3/integration
+    type: ONLINE
+    healthz:
+      - port: 12010
+    varz:
+      port: 12010
+  arryved-java:
+    root: /export/hda3/java
+    type: RUNTIME
+  arryved-merchant:
+    root: /export/hda3/merchant
+    type: ONLINE
+    healthz:
+      - port: 13010
+    varz:
+      port: 13010
+  arryved-monitor:
+    type: DAEMON
+  arryved-nginx-repo:
+    type: UNKNOWN
+  arryved-onlineordering:
+    type: UNKNOWN
+  arryved-portal:
+    root: /export/hda3/expo
+    type: ONLINE
+    healthz:
+      - port: 443
+        tls: true
+      - port: 8888
+      - port: 8889
+        tls: true
+    varz:
+      port: 8888
+  arryved-sshfix:
+    type: DAEMON

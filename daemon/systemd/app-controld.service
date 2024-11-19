@@ -1,0 +1,11 @@
+[Unit]
+Description=app-controld
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/app-controld
+Restart=on-failure
+User=app-control
+
+[Install]
+WantedBy=multi-user.target
