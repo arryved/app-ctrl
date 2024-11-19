@@ -1,0 +1,11 @@
+# This config is used for testing; keep real config in ansible|k8s
+---
+env: dev
+logLevel: info
+
+kubeConfigPath: config/mock-kubeconfig.yaml
+
+queue:
+  project: arryved-177921
+  topic: app-control-jobs
+  subscription: app-control-jobs--app-control
