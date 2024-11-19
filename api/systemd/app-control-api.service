@@ -1,0 +1,11 @@
+[Unit]
+Description=app-control-api
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/app-control-api
+Restart=on-failure
+User=app-control
+
+[Install]
+WantedBy=multi-user.target

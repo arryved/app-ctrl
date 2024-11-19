@@ -1,0 +1,77 @@
+# This config is used for testing; keep real config in ansible
+---
+logLevel: info
+readTimeoutS: 5
+writeTimeoutS: 10
+
+kubeConfigPath: config/mock-kubeconfig.yaml
+serviceAccountKeyPath: ../../secrets/service-acct-key.json
+
+queue:
+  project: arryved-177921
+  topic: app-control-jobs
+  subscription: app-control-jobs--app-control
+
+tls:
+  ciphers:
+    - TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA
+    - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+    - TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA
+    - TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA
+    - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+    - TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA
+    - TLS_RSA_WITH_AES_128_CBC_SHA
+    - TLS_RSA_WITH_AES_256_CBC_SHA
+  minVersion: "1.2"
+
+topology:
+  dev:
+    clusters:
+    - id:
+        app: arryved-api
+        region: central
+      kind: online
+      runtime: GCE
+      repo: arryved-apt
+      hosts:
+        dev-api.dev.arryved.com:
+        dev-api2.dev.arryved.com:
+authnEnabled: false
+rbacEnabled: false
+roleMemberships:
+  operator:
+    - urn:example:group:sre-team@example.com
+  developer:
+    - urn:example:group:dev-team@example.com
+  manager:
+    - urn:example:group:managers@example.com
+    - urn:example:group:cto-office@example.com
+
+accessEntries:
+  - role: operator
+    permission: deploy
+    target: "*"
+  - role: developer
+    permission: deploy
+    target: urn:example:app:app1
+  - role: manager
+    permission: deploy
+    target: urn:example:app:app1
+  - role: manager
+    permission: deploy
+    target: urn:example:app:app2
+
+# TODO get rid of this in favor of GWS lookups
+usersByGroups:
+  urn:example:group:sre-team@example.com:
+    - urn:example:user:alice.sre@example.com
+  urn:example:group:dev-team@example.com:
+    - urn:example:user:bob.dev@example.com
+  urn:example:group:managers@example.com:
+    - urn:example:user:babs.mgr@example.com
+  urn:example:group:cto-office@example.com:
+    - urn:example:user:angus.cto@example.com
+
+secretsServiceAccounts:
+  - 676571955389-compute@developer.gserviceaccount.com
+  - gke-workload-hles@arryved-177921.iam.gserviceaccount.com

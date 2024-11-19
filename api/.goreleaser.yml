@@ -1,0 +1,41 @@
+version: 2
+
+project_name: app-control-api
+
+archives:
+  - format: binary
+
+builds:
+  - env: [CGO_ENABLED=0]
+    goos:
+      - linux
+    goarch:
+      - amd64
+
+nfpms:
+- maintainer: TODO(name) <todo@example.com>
+  id: app-control-api-deb
+  description: |
+    This is an proxy/work broker for app-control, to process and delegate
+    actions (status, restart, stop, start, deploy, diag, etc.)
+  formats:
+    - deb
+  provides:
+    - app-control-api
+  bindir: /usr/local/bin
+  vendor: Arryved
+  homepage: https://docs.arryved.com/topics/sre-rlzavcux
+  license: none/proprietary
+  contents:
+    - src: ./systemd/app-control-api.service
+      dst: /lib/systemd/system/app-control-api.service
+      file_info:
+        mode: 0644
+        owner: root
+        group: root
+
+publishers:
+  - name: Google Artifact Repository
+    cmd: gcloud artifacts apt upload arryved-apt --location=us-central1 --project=arryved-tools --source={{ abs .ArtifactPath }}
+    ids:
+      - app-control-api-deb
