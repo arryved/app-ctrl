@@ -23,20 +23,9 @@ dependencies = [
     "requests",
     "setuptools>=61.0",
 ]
-[[project.authors]]
-name = "Bill West"
-email = "wwest@arryved.com"
-
-[[project.authors]]
-name = "Jeremy Miller"
-email = "jeremy@arryved.com"
 
 [project.optional-dependencies]
 tests = [ "build", "coverage>=6.5.0", "pytest>=7.2.0", "mypy>=0.991", "flake8>=6.0.0", "twine>=5.0.0", "types-requests>=2.28",]
 
 [project.scripts]
 app-control = "appcontrol.cli:cli"
-
-[project.urls]
-Homepage = "https://github.com/arryved/app-ctrl"
-"Bug Tracker" = "https://arryved-rnd.atlassian.net/jira/software/c/projects/SRE/boards/10"
